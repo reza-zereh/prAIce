@@ -17,6 +17,7 @@ jupytext==1.14.1
 gdown==4.5.1
 PyYAML==5.4.1
 yfinance==0.1.74
+html5lib==1.1
 SQLAlchemy==1.4.37
 alembic==1.8.1
 pyarrow==6.0.1

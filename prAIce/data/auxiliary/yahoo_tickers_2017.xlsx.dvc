@@ -1,0 +1,4 @@
+outs:
+- md5: 0ff8d2b2e832b18ef159d3ba89e1dce7
+  size: 8929786
+  path: yahoo_tickers_2017.xlsx

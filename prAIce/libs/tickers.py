@@ -2,7 +2,10 @@ import pathlib
 
 import pandas as pd
 import paths
+import talib as ta
 import yfinance as yf
+from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.utils.validation import check_is_fitted
 
 
 class Ticker:
@@ -67,3 +70,34 @@ class Ticker:
         if save:
             self.__store()
         return self.history
+
+
+class TechnicalAnalysis:
+    def __init__(self, data: pd.DataFrame):
+        self.data = data.copy()
+        self.has_open = "open" in data.columns
+        self.has_high = "high" in data.columns
+        self.has_low = "low" in data.columns
+        self.has_close = "close" in data.columns
+        self.has_volume = "volume" in data.columns
+
+        if not all(
+            [self.has_open, self.has_high, self.has_low, self.has_close]
+        ):
+            raise KeyError(
+                "All of 'open', 'high', 'low', and 'close' columns should be in data."
+            )
+
+    def sma(self, period=30):
+        self.data[f"sma_{period}"] = ta.SMA(self.data["close"], period)
+        return self
+
+    def ema(self, period=30):
+        self.data[f"ema_{period}"] = ta.EMA(self.data["close"], period)
+        return self
+
+    def wma(self, period=30):
+        self.data[f"wma_{period}"] = ta.WMA(self.data["close"], period)
+        return self
+
+    # def bbands(self, period=20, )

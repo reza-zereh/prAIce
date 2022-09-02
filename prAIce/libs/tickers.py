@@ -189,3 +189,63 @@ class TechnicalAnalysis:
         col = f"{indicator}_{period}"
         self.data[col] = func(self.data, period)
         return self
+
+    def macd(
+        self,
+        fast_period: int = 12,
+        slow_period: int = 26,
+        signal_period: int = 9,
+        source: str = "close",
+    ):
+        """Add MACD indicator to data.
+
+        Args:
+            fast_period (int, optional): Fast period length. Defaults to 12.
+            slow_period (int, optional): Slow period length. Defaults to 26.
+            signal_period (int, optional): Signal period length. Defaults to 9.
+            source (str, optional): Column to use as source for calculating MACD. Defaults to "close".
+
+        Returns:
+            self: Instantiated class object. Use self.data property to get transformed data.
+
+        """
+        assert (
+            source in self.data.columns
+        ), f"'{source}' not found in the axis."
+        outputs = abstract.MACD(
+            self.data[source], fast_period, slow_period, signal_period
+        )
+        self.data[
+            f"MACD_{fast_period}_{slow_period}_{signal_period}"
+        ] = outputs[0]
+        self.data[
+            f"MACD_SIGNAL_{fast_period}_{slow_period}_{signal_period}"
+        ] = outputs[1]
+        self.data[
+            f"MACD_HIST_{fast_period}_{slow_period}_{signal_period}"
+        ] = outputs[2]
+        return self
+
+    def stochastic(
+        self,
+        fastk_period: int = 5,
+        slowk_period: int = 3,
+        slowk_matype: int = 0,
+        slowd_period: int = 3,
+        slowd_matype: int = 0,
+    ):
+        outputs = abstract.STOCH(
+            self.data,
+            fastk_period,
+            slowk_period,
+            slowk_matype,
+            slowd_period,
+            slowd_matype,
+        )
+        self.data[
+            f"STOCH_SLOWK_{fastk_period}_{slowk_period}_{slowk_matype}_{slowd_period}_{slowd_matype}"
+        ] = outputs[0]
+        self.data[
+            f"STOCH_SLOWD_{fastk_period}_{slowk_period}_{slowk_matype}_{slowd_period}_{slowd_matype}"
+        ] = outputs[1]
+        return self

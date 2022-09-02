@@ -249,3 +249,25 @@ class TechnicalAnalysis:
             f"STOCH_SLOWD_{fastk_period}_{slowk_period}_{slowk_matype}_{slowd_period}_{slowd_matype}"
         ] = outputs[1]
         return self
+
+    def cycle(self, indicator: str, source: str = "close"):
+        """Add Cyclical indicators to data.
+
+        Args:
+            indicator (str): Name of the cyclical indicator. Valid indicators: HT_DCPERIOD,
+                HT_DCPHASE, HT_TRENDMODE.
+            source (str, optional): Column to use as source for calculating cyclical indicator. Defaults to 'close'.
+        """
+        assert (
+            source in self.data.columns
+        ), f"'{source}' not found in the axis."
+        assert (
+            indicator == "HT_DCPERIOD"
+            or indicator == "HT_DCPHASE"
+            or indicator == "HT_TRENDMODE"
+        ), (
+            "Expected indicator to be one of 'HT_DCPERIOD', 'HT_DCPHASE', 'HT_TRENDMODE' "
+            f"but got '{indicator}'"
+        )
+        func = eval(f"abstract.{indicator}")
+        self.data[indicator] = func(self.data[source])

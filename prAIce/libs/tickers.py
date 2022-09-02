@@ -120,10 +120,9 @@ class TechnicalAnalysis:
             or ma_type == "DEMA"
             or ma_type == "KAMA"
             or ma_type == "TRIMA"
-            or ma_type == "MAMA"
         ), (
             "Expected ma_type to be one of 'SMA', 'EMA', "
-            f"'WMA', 'DEMA', 'KAMA', 'TRIMA', 'MAMA' but got '{ma_type}'"
+            f"'WMA', 'DEMA', 'KAMA', 'TRIMA' but got '{ma_type}'"
         )
         assert (
             source in self.data.columns
@@ -258,10 +257,10 @@ class TechnicalAnalysis:
         )
         self.data[
             f"STOCH_SLOWK_{fastk_period}_{slowk_period}_{slowk_matype}_{slowd_period}_{slowd_matype}"
-        ] = outputs[0]
+        ] = outputs["slowk"]
         self.data[
             f"STOCH_SLOWD_{fastk_period}_{slowk_period}_{slowk_matype}_{slowd_period}_{slowd_matype}"
-        ] = outputs[1]
+        ] = outputs["slowd"]
         return self
 
     def cycle(self, indicator: str, source: str = "close"):
@@ -401,3 +400,109 @@ class VariablesBuilder(BaseEstimator, TransformerMixin):
             self.source_col_
         ].shift(-self.forecast_period)
         return X
+
+
+class Instrument:
+    # TODO: Write docstring for Instrument class
+    def __init__(
+        self,
+        ticker: str,
+        period: str = "max",
+        interval: str = "1d",
+        start_date: str = None,
+        end_date: str = None,
+        add_all_ta_indicators: bool = True,
+        lookback_period: int = 0,
+        forecast_period: int = 1,
+    ):
+        self.ticker = ticker
+        self.period = period
+        self.interval = interval
+        self.start_date = start_date
+        self.end_date = end_date
+        self.add_ta_indicators = add_all_ta_indicators
+        self.lookback_period = lookback_period
+        self.forecast_period = forecast_period
+
+    @staticmethod
+    def add_all_indicators(data: pd.DataFrame) -> pd.DataFrame:
+        """Add all of the technical analysis indicators to given DataFrame using default parameters.
+
+        Args:
+            data (pd.DataFrame): DataFrame to be transformed.
+
+        Returns:
+            pd.DataFrame: DataFrame with technical indicators added to it.
+        """
+        ta_obj = TechnicalAnalysis(data)
+        (
+            ta_obj.moving_average("SMA")
+            .moving_average("EMA")
+            .moving_average("WMA")
+            .moving_average("DEMA")
+            .moving_average("KAMA")
+            .moving_average("TRIMA")
+            .bollinger_bands()
+            .momentum("ADX")
+            .momentum("ADXR")
+            .momentum("CCI")
+            .momentum("DX")
+            .momentum("MFI")
+            .momentum("MOM")
+            .momentum("ROC")
+            .momentum("ROCP")
+            .momentum("ROCR")
+            .momentum("RSI")
+            .momentum("TRIX")
+            .momentum("WILLR")
+            .macd()
+            .stochastic()
+            .cycle("HT_DCPERIOD")
+            .cycle("HT_DCPHASE")
+            .cycle("HT_TRENDMODE")
+            .cdl_pattern("CDL3STARSINSOUTH")
+            .cdl_pattern("CDLABANDONEDBABY")
+            .cdl_pattern("CDLCLOSINGMARUBOZU")
+            .cdl_pattern("CDLCOUNTERATTACK")
+            .cdl_pattern("CDLDARKCLOUDCOVER")
+            .cdl_pattern("CDLDOJI")
+            .cdl_pattern("CDLDOJISTAR")
+            .cdl_pattern("CDLDRAGONFLYDOJI")
+            .cdl_pattern("CDLENGULFING")
+            .cdl_pattern("CDLEVENINGDOJISTAR")
+            .cdl_pattern("CDLEVENINGSTAR")
+            .cdl_pattern("CDLGRAVESTONEDOJI")
+            .cdl_pattern("CDLHAMMER")
+            .cdl_pattern("CDLHANGINGMAN")
+            .cdl_pattern("CDLHARAMI")
+            .cdl_pattern("CDLINVERTEDHAMMER")
+            .cdl_pattern("CDLMARUBOZU")
+            .cdl_pattern("CDLMORNINGDOJISTAR")
+            .cdl_pattern("CDLMORNINGSTAR")
+            .cdl_pattern("CDLPIERCING")
+            .cdl_pattern("CDLSHOOTINGSTAR")
+            .cdl_pattern("CDLTAKURI")
+            .cdl_pattern("CDLTRISTAR")
+        )
+        return ta_obj.data
+
+    def get_data(self):
+        """Prepare the historical data with technical analysis features, and also lookback and forecast variables.
+
+        Returns:
+            pd.DataFrame: Processed DataFrame.
+        """
+        self.data_ = Ticker(ticker=self.ticker).get_history(
+            period=self.period,
+            interval=self.interval,
+            start_date=self.start_date,
+            end_date=self.end_date,
+        )
+        if self.add_ta_indicators:
+            self.data_ = self.add_all_indicators(self.data_)
+
+        self.data_ = VariablesBuilder(
+            forecast_period=self.forecast_period,
+            lookback_period=self.lookback_period,
+        ).fit_transform(self.data_)
+        return self.data_

@@ -88,16 +88,49 @@ class TechnicalAnalysis:
                 "All of 'open', 'high', 'low', and 'close' columns should be in data."
             )
 
-    def sma(self, period=30):
-        self.data[f"sma_{period}"] = ta.SMA(self.data["close"], period)
+    def moving_average(self, ma_type: str = "SMA", period: int = 30):
+        """Add moving average to data using 'close' as source.
+
+        Args:
+            ma_type (str, optional): Moving average kind. Valid types: SMA, EMA, WMA, DEMA, KAMA,
+                TRIMA, MAMA. Defaults to "SMA".
+            period (int, optional): Moving average length. Defaults to 30.
+
+        Returns:
+            self: Instantiated class object. Use self.data property to get transformed data.
+        """
+        assert (
+            ma_type == "SMA"
+            or ma_type == "EMA"
+            or ma_type == "WMA"
+            or ma_type == "DEMA"
+            or ma_type == "KAMA"
+            or ma_type == "TRIMA"
+            or ma_type == "MAMA"
+        ), (
+            "Expected ma_type to be one of 'SMA', 'EMA', "
+            f"'WMA', 'DEMA', 'KAMA', 'TRIMA', 'MAMA' but got '{ma_type}'"
+        )
+
+        func = eval(f"ta.{ma_type}")
+        period = int(period)
+        col = f"{ma_type}_{period}"
+
+        self.data[col] = func(self.data["close"], period)
         return self
 
-    def ema(self, period=30):
-        self.data[f"ema_{period}"] = ta.EMA(self.data["close"], period)
-        return self
+    def bollinger_bands(self, period: int = 20, std_dev=2):
+        """Add bollinger bands to data using 'close' as source.
 
-    def wma(self, period=30):
-        self.data[f"wma_{period}"] = ta.WMA(self.data["close"], period)
-        return self
+        Args:
+            period (int, optional): Moving average length. Defaults to 20.
+            std_dev (int, optional): Standard deviation for calculating upper and lower bands. Defaults to 2.
 
-    # def bbands(self, period=20, )
+        Returns:
+            self: Instantiated class object. Use self.data property to get transformed data.
+        """
+        bb = ta.BBANDS(self.data["close"], period, std_dev, std_dev)
+        self.data[f"BB_upper_{period}"] = bb[0]
+        self.data[f"BB_middle_{period}"] = bb[1]
+        self.data[f"BB_lower_{period}"] = bb[2]
+        return self

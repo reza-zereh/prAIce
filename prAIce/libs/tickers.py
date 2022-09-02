@@ -4,6 +4,8 @@ import pandas as pd
 import paths
 import talib as ta
 import yfinance as yf
+from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.utils.validation import check_is_fitted
 from talib import abstract
 
 
@@ -339,3 +341,35 @@ class TechnicalAnalysis:
         func = eval(f"abstract.{pattern}")
         self.data[pattern] = func(self.data)
         return self
+
+
+class VariablesBuilder(BaseEstimator, TransformerMixin):
+    def __init__(
+        self,
+        forecast_period: int = 1,
+        lookback_period: int = 0,
+        target_col_prefix: str = "target",
+    ):
+        self.forecast_period = forecast_period
+        self.lookback_period = lookback_period
+        self.target_col_prefix = target_col_prefix
+
+    def fit(self, X: pd.DataFrame = None, source: str = "close"):
+        self.source_col_ = source
+        return self
+
+    def transform(self, X: pd.DataFrame):
+        check_is_fitted(self, "source_col_")
+        if self.source_col_ not in X.columns:
+            raise KeyError(f"{self.source_col_} not found in index.")
+
+        X = X.copy()
+        if self.lookback_period > 0:
+            for i in range(1, self.lookback_period + 1):
+                X[f"{self.source_col_}_minus_{i}_period"] = X[
+                    self.source_col_
+                ].shift(i)
+        X[f"{self.target_col_prefix}_{self.forecast_period}_period"] = X[
+            self.source_col_
+        ].shift(-self.forecast_period)
+        return X

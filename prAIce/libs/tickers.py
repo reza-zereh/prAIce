@@ -73,6 +73,16 @@ class Ticker:
 
 
 class TechnicalAnalysis:
+    """This class is an interface for 'TA-LIB' library.
+
+    Args:
+        data (pd.DataFrame): DataFrame that you want to add technical analysis stuff to it.
+
+    Raises:
+        KeyError: Throws error if given DataFrame doesn't include any of 'open',
+            'high', 'low', 'close' columns.
+    """
+
     def __init__(self, data: pd.DataFrame):
         self.data = data.copy()
         self.has_open = "open" in data.columns

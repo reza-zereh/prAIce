@@ -4,8 +4,7 @@ import pandas as pd
 import paths
 import talib as ta
 import yfinance as yf
-from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.utils.validation import check_is_fitted
+from talib import abstract
 
 
 class Ticker:
@@ -155,4 +154,38 @@ class TechnicalAnalysis:
         self.data[f"BB_upper_{period}"] = bb[0]
         self.data[f"BB_middle_{period}"] = bb[1]
         self.data[f"BB_lower_{period}"] = bb[2]
+        return self
+
+    def momentum(self, indicator, period: int = 14):
+        """Add momentum indicators to data. Indicators in this group only return one output value.
+
+        Args:
+            indicator (str): Momentum indicator to be added to data. Valid indicators: ADX,
+                ADXR, CCI, DX, MFI, MOM, ROC, ROCP, ROCR, RSI, TRIX, WILLR.
+            period (int, optional): Length for calculating the indicator. Defaults to 14.
+
+        Returns:
+            self: Instantiated class object. Use self.data property to get transformed data.
+        """
+        assert (
+            indicator == "ADX"
+            or indicator == "ADXR"
+            or indicator == "CCI"
+            or indicator == "DX"
+            or indicator == "MFI"
+            or indicator == "MOM"
+            or indicator == "ROC"
+            or indicator == "ROCP"
+            or indicator == "ROCR"
+            or indicator == "RSI"
+            or indicator == "TRIX"
+            or indicator == "WILLR"
+        ), (
+            "Expected indicator to be one of 'ADX', 'ADXR', 'CCI', 'DX', 'MFI', 'MOM', "
+            f"'ROC', 'ROCP', 'ROCR', 'RSI', 'TRIX', 'WILLR' but got '{indicator}'"
+        )
+        func = eval(f"abstract.{indicator}")
+        period = int(period)
+        col = f"{indicator}_{period}"
+        self.data[col] = func(self.data, period)
         return self

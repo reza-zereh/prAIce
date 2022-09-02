@@ -234,6 +234,18 @@ class TechnicalAnalysis:
         slowd_period: int = 3,
         slowd_matype: int = 0,
     ):
+        """Add Stochastic indicator to data.
+
+        Args:
+            fastk_period (int, optional): Fast K period. Defaults to 5.
+            slowk_period (int, optional): Slow K Period. Defaults to 3.
+            slowk_matype (int, optional): Slow K MA type. Defaults to 0.
+            slowd_period (int, optional): Slow D period. Defaults to 3.
+            slowd_matype (int, optional): Slow D MA type. Defaults to 0.
+
+        Returns:
+            self: Instantiated class object. Use self.data property to get transformed data.
+        """
         outputs = abstract.STOCH(
             self.data,
             fastk_period,

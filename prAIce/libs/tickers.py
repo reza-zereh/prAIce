@@ -257,6 +257,9 @@ class TechnicalAnalysis:
             indicator (str): Name of the cyclical indicator. Valid indicators: HT_DCPERIOD,
                 HT_DCPHASE, HT_TRENDMODE.
             source (str, optional): Column to use as source for calculating cyclical indicator. Defaults to 'close'.
+
+        Returns:
+            self: Instantiated class object. Use self.data property to get transformed data.
         """
         assert (
             source in self.data.columns
@@ -271,6 +274,7 @@ class TechnicalAnalysis:
         )
         func = eval(f"abstract.{indicator}")
         self.data[indicator] = func(self.data[source])
+        return self
 
     def cdl_pattern(self, pattern: str):
         """Candlestick pattern recognition.

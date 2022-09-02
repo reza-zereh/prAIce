@@ -98,13 +98,16 @@ class TechnicalAnalysis:
                 "All of 'open', 'high', 'low', and 'close' columns should be in data."
             )
 
-    def moving_average(self, ma_type: str = "SMA", period: int = 30):
-        """Add moving average to data using 'close' as source.
+    def moving_average(
+        self, ma_type: str = "SMA", period: int = 30, source: str = "close"
+    ):
+        """Add moving average to data.
 
         Args:
             ma_type (str, optional): Moving average kind. Valid types: SMA, EMA, WMA, DEMA, KAMA,
                 TRIMA, MAMA. Defaults to "SMA".
             period (int, optional): Moving average length. Defaults to 30.
+            source (str, optional): Column to use as source for calculating moving average.
 
         Returns:
             self: Instantiated class object. Use self.data property to get transformed data.
@@ -121,25 +124,34 @@ class TechnicalAnalysis:
             "Expected ma_type to be one of 'SMA', 'EMA', "
             f"'WMA', 'DEMA', 'KAMA', 'TRIMA', 'MAMA' but got '{ma_type}'"
         )
+        assert (
+            source in self.data.columns
+        ), f"'{source}' not found in the axis."
 
         func = eval(f"ta.{ma_type}")
         period = int(period)
         col = f"{ma_type}_{period}"
-
-        self.data[col] = func(self.data["close"], period)
+        self.data[col] = func(self.data[source], period)
         return self
 
-    def bollinger_bands(self, period: int = 20, std_dev=2):
-        """Add bollinger bands to data using 'close' as source.
+    def bollinger_bands(
+        self, period: int = 20, std_dev: int = 2, source: str = "close"
+    ):
+        """Add bollinger bands to data.
 
         Args:
             period (int, optional): Moving average length. Defaults to 20.
             std_dev (int, optional): Standard deviation for calculating upper and lower bands. Defaults to 2.
+            source (str, optional): Column to use as source for calculating BBands.
 
         Returns:
             self: Instantiated class object. Use self.data property to get transformed data.
         """
-        bb = ta.BBANDS(self.data["close"], period, std_dev, std_dev)
+        assert (
+            source in self.data.columns
+        ), f"'{source}' not found in the axis."
+
+        bb = ta.BBANDS(self.data[source], period, std_dev, std_dev)
         self.data[f"BB_upper_{period}"] = bb[0]
         self.data[f"BB_middle_{period}"] = bb[1]
         self.data[f"BB_lower_{period}"] = bb[2]

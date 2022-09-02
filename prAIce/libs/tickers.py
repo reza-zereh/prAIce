@@ -4,6 +4,8 @@ import pandas as pd
 import paths
 import talib as ta
 import yfinance as yf
+from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.utils.validation import check_is_fitted
 from talib import abstract
 
 
@@ -339,3 +341,63 @@ class TechnicalAnalysis:
         func = eval(f"abstract.{pattern}")
         self.data[pattern] = func(self.data)
         return self
+
+
+class VariablesBuilder(BaseEstimator, TransformerMixin):
+    def __init__(
+        self,
+        forecast_period: int = 1,
+        lookback_period: int = 0,
+        target_col_prefix: str = "target_",
+    ):
+        """Create forecast and lookback columns for a given DataFrame.
+
+        Args:
+            forecast_period (int, optional): Forecast period; 1 means next period, 7 means next 7 period, etc.
+                Defaults to 1.
+            lookback_period (int, optional): Number of periods in past to build features from. Defaults to 0.
+            target_col_prefix (str, optional): Target colum prefix. Defaults to "target_".
+        """
+        self.forecast_period = forecast_period
+        self.lookback_period = lookback_period
+        self.target_col_prefix = target_col_prefix
+
+    def fit(self, X: pd.DataFrame = None, source: str = "close"):
+        """Fit the transformer.
+
+        Args:
+            X (pd.DataFrame, optional): DataFrame to be transformed. Defaults to None.
+            source (str, optional): Source colum in X. Defaults to "close".
+
+        Returns:
+            VariablesBuilder: Fitted object.
+        """
+        self.source_col_ = source
+        return self
+
+    def transform(self, X: pd.DataFrame):
+        """Transform the DataFrame.
+
+        Args:
+            X (pd.DataFrame): DataFrame to be transformed.
+
+        Raises:
+            KeyError: Throws error if source column is not found in index.
+
+        Returns:
+            pd.DataFrame: Transformed DataFrame.
+        """
+        check_is_fitted(self, "source_col_")
+        if self.source_col_ not in X.columns:
+            raise KeyError(f"{self.source_col_} not found in index.")
+
+        X = X.copy()
+        if self.lookback_period > 0:
+            for i in range(1, self.lookback_period + 1):
+                X[f"{self.source_col_}_minus_{i}_period"] = X[
+                    self.source_col_
+                ].shift(i)
+        X[f"{self.target_col_prefix}{self.forecast_period}_period"] = X[
+            self.source_col_
+        ].shift(-self.forecast_period)
+        return X

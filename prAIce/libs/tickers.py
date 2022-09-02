@@ -2,7 +2,9 @@ import pathlib
 
 import pandas as pd
 import paths
+import talib as ta
 import yfinance as yf
+from talib import abstract
 
 
 class Ticker:
@@ -50,9 +52,290 @@ class Ticker:
         Returns:
             pd.DataFrame: Historical prices.
         """
-        self.history = self.yfticker.history(
+        self.history: pd.DataFrame = self.yfticker.history(
             period=period, interval=interval, start=start_date, end=end_date
+        )
+        self.history = self.history.rename(
+            columns={
+                "Open": "open",
+                "High": "high",
+                "Low": "low",
+                "Close": "close",
+                "Volume": "volume",
+                "Dividends": "dividends",
+                "Stock Splits": "stock_splits",
+            }
         )
         if save:
             self.__store()
         return self.history
+
+
+class TechnicalAnalysis:
+    """This class is an interface for 'TA-LIB' library.
+
+    Args:
+        data (pd.DataFrame): DataFrame that you want to add technical analysis stuff to it.
+
+    Raises:
+        KeyError: Throws error if given DataFrame doesn't include any of 'open',
+            'high', 'low', 'close' columns.
+    """
+
+    def __init__(self, data: pd.DataFrame):
+        self.data = data.copy()
+        self.has_open = "open" in data.columns
+        self.has_high = "high" in data.columns
+        self.has_low = "low" in data.columns
+        self.has_close = "close" in data.columns
+        self.has_volume = "volume" in data.columns
+
+        if not all(
+            [self.has_open, self.has_high, self.has_low, self.has_close]
+        ):
+            raise KeyError(
+                "All of 'open', 'high', 'low', and 'close' columns should be in data."
+            )
+
+    def moving_average(
+        self, ma_type: str = "SMA", period: int = 30, source: str = "close"
+    ):
+        """Add moving average to data.
+
+        Args:
+            ma_type (str, optional): Moving average kind. Valid types: SMA, EMA, WMA, DEMA, KAMA,
+                TRIMA, MAMA. Defaults to "SMA".
+            period (int, optional): Moving average length. Defaults to 30.
+            source (str, optional): Column to use as source for calculating moving average.
+
+        Returns:
+            self: Instantiated class object. Use self.data property to get transformed data.
+        """
+        assert (
+            ma_type == "SMA"
+            or ma_type == "EMA"
+            or ma_type == "WMA"
+            or ma_type == "DEMA"
+            or ma_type == "KAMA"
+            or ma_type == "TRIMA"
+            or ma_type == "MAMA"
+        ), (
+            "Expected ma_type to be one of 'SMA', 'EMA', "
+            f"'WMA', 'DEMA', 'KAMA', 'TRIMA', 'MAMA' but got '{ma_type}'"
+        )
+        assert (
+            source in self.data.columns
+        ), f"'{source}' not found in the axis."
+
+        func = eval(f"ta.{ma_type}")
+        period = int(period)
+        col = f"{ma_type}_{period}"
+        self.data[col] = func(self.data[source], period)
+        return self
+
+    def bollinger_bands(
+        self, period: int = 20, std_dev: int = 2, source: str = "close"
+    ):
+        """Add bollinger bands to data.
+
+        Args:
+            period (int, optional): Moving average length. Defaults to 20.
+            std_dev (int, optional): Standard deviation for calculating upper and lower bands. Defaults to 2.
+            source (str, optional): Column to use as source for calculating BBands.
+
+        Returns:
+            self: Instantiated class object. Use self.data property to get transformed data.
+        """
+        assert (
+            source in self.data.columns
+        ), f"'{source}' not found in the axis."
+
+        bb = ta.BBANDS(self.data[source], period, std_dev, std_dev)
+        self.data[f"BB_upper_{period}"] = bb[0]
+        self.data[f"BB_middle_{period}"] = bb[1]
+        self.data[f"BB_lower_{period}"] = bb[2]
+        return self
+
+    def momentum(self, indicator, period: int = 14):
+        """Add momentum indicators to data. Indicators in this group only return one output value.
+
+        Args:
+            indicator (str): Momentum indicator to be added to data. Valid indicators: ADX,
+                ADXR, CCI, DX, MFI, MOM, ROC, ROCP, ROCR, RSI, TRIX, WILLR.
+            period (int, optional): Length for calculating the indicator. Defaults to 14.
+
+        Returns:
+            self: Instantiated class object. Use self.data property to get transformed data.
+        """
+        assert (
+            indicator == "ADX"
+            or indicator == "ADXR"
+            or indicator == "CCI"
+            or indicator == "DX"
+            or indicator == "MFI"
+            or indicator == "MOM"
+            or indicator == "ROC"
+            or indicator == "ROCP"
+            or indicator == "ROCR"
+            or indicator == "RSI"
+            or indicator == "TRIX"
+            or indicator == "WILLR"
+        ), (
+            "Expected indicator to be one of 'ADX', 'ADXR', 'CCI', 'DX', 'MFI', 'MOM', "
+            f"'ROC', 'ROCP', 'ROCR', 'RSI', 'TRIX', 'WILLR' but got '{indicator}'"
+        )
+        func = eval(f"abstract.{indicator}")
+        period = int(period)
+        col = f"{indicator}_{period}"
+        self.data[col] = func(self.data, period)
+        return self
+
+    def macd(
+        self,
+        fast_period: int = 12,
+        slow_period: int = 26,
+        signal_period: int = 9,
+        source: str = "close",
+    ):
+        """Add MACD indicator to data.
+
+        Args:
+            fast_period (int, optional): Fast period length. Defaults to 12.
+            slow_period (int, optional): Slow period length. Defaults to 26.
+            signal_period (int, optional): Signal period length. Defaults to 9.
+            source (str, optional): Column to use as source for calculating MACD. Defaults to "close".
+
+        Returns:
+            self: Instantiated class object. Use self.data property to get transformed data.
+
+        """
+        assert (
+            source in self.data.columns
+        ), f"'{source}' not found in the axis."
+        outputs = abstract.MACD(
+            self.data[source], fast_period, slow_period, signal_period
+        )
+        self.data[
+            f"MACD_{fast_period}_{slow_period}_{signal_period}"
+        ] = outputs[0]
+        self.data[
+            f"MACD_SIGNAL_{fast_period}_{slow_period}_{signal_period}"
+        ] = outputs[1]
+        self.data[
+            f"MACD_HIST_{fast_period}_{slow_period}_{signal_period}"
+        ] = outputs[2]
+        return self
+
+    def stochastic(
+        self,
+        fastk_period: int = 5,
+        slowk_period: int = 3,
+        slowk_matype: int = 0,
+        slowd_period: int = 3,
+        slowd_matype: int = 0,
+    ):
+        """Add Stochastic indicator to data.
+
+        Args:
+            fastk_period (int, optional): Fast K period. Defaults to 5.
+            slowk_period (int, optional): Slow K Period. Defaults to 3.
+            slowk_matype (int, optional): Slow K MA type. Defaults to 0.
+            slowd_period (int, optional): Slow D period. Defaults to 3.
+            slowd_matype (int, optional): Slow D MA type. Defaults to 0.
+
+        Returns:
+            self: Instantiated class object. Use self.data property to get transformed data.
+        """
+        outputs = abstract.STOCH(
+            self.data,
+            fastk_period,
+            slowk_period,
+            slowk_matype,
+            slowd_period,
+            slowd_matype,
+        )
+        self.data[
+            f"STOCH_SLOWK_{fastk_period}_{slowk_period}_{slowk_matype}_{slowd_period}_{slowd_matype}"
+        ] = outputs[0]
+        self.data[
+            f"STOCH_SLOWD_{fastk_period}_{slowk_period}_{slowk_matype}_{slowd_period}_{slowd_matype}"
+        ] = outputs[1]
+        return self
+
+    def cycle(self, indicator: str, source: str = "close"):
+        """Add Cyclical indicators to data.
+
+        Args:
+            indicator (str): Name of the cyclical indicator. Valid indicators: HT_DCPERIOD,
+                HT_DCPHASE, HT_TRENDMODE.
+            source (str, optional): Column to use as source for calculating cyclical indicator. Defaults to 'close'.
+
+        Returns:
+            self: Instantiated class object. Use self.data property to get transformed data.
+        """
+        assert (
+            source in self.data.columns
+        ), f"'{source}' not found in the axis."
+        assert (
+            indicator == "HT_DCPERIOD"
+            or indicator == "HT_DCPHASE"
+            or indicator == "HT_TRENDMODE"
+        ), (
+            "Expected indicator to be one of 'HT_DCPERIOD', 'HT_DCPHASE', 'HT_TRENDMODE' "
+            f"but got '{indicator}'"
+        )
+        func = eval(f"abstract.{indicator}")
+        self.data[indicator] = func(self.data[source])
+        return self
+
+    def cdl_pattern(self, pattern: str):
+        """Candlestick pattern recognition.
+
+        Args:
+            pattern (str): Candlestick pattern to be recognized. Valid patterns:
+                "CDL3STARSINSOUTH", "CDLABANDONEDBABY", "CDLCLOSINGMARUBOZU",
+                "CDLCOUNTERATTACK", "CDLDARKCLOUDCOVER", "CDLDOJI",
+                "CDLDOJISTAR", "CDLDRAGONFLYDOJI", "CDLENGULFING",
+                "CDLEVENINGDOJISTAR", "CDLEVENINGSTAR", "CDLGRAVESTONEDOJI",
+                "CDLHAMMER", "CDLHANGINGMAN", "CDLHARAMI", "CDLINVERTEDHAMMER",
+                "CDLMARUBOZU", "CDLMORNINGDOJISTAR", "CDLMORNINGSTAR", "CDLPIERCING",
+                "CDLSHOOTINGSTAR", "CDLTAKURI", "CDLTRISTAR"
+
+        Raises:
+            ValueError: If given pattern is not in list of valid patterns.
+
+        Returns:
+            self: Instantiated class object. Use self.data property to get transformed data.
+        """
+        patterns = [
+            "CDL3STARSINSOUTH",
+            "CDLABANDONEDBABY",
+            "CDLCLOSINGMARUBOZU",
+            "CDLCOUNTERATTACK",
+            "CDLDARKCLOUDCOVER",
+            "CDLDOJI",
+            "CDLDOJISTAR",
+            "CDLDRAGONFLYDOJI",
+            "CDLENGULFING",
+            "CDLEVENINGDOJISTAR",
+            "CDLEVENINGSTAR",
+            "CDLGRAVESTONEDOJI",
+            "CDLHAMMER",
+            "CDLHANGINGMAN",
+            "CDLHARAMI",
+            "CDLINVERTEDHAMMER",
+            "CDLMARUBOZU",
+            "CDLMORNINGDOJISTAR",
+            "CDLMORNINGSTAR",
+            "CDLPIERCING",
+            "CDLSHOOTINGSTAR",
+            "CDLTAKURI",
+            "CDLTRISTAR",
+        ]
+        if pattern not in patterns:
+            raise ValueError(
+                f"Expected pattern to be one of {patterns} but got '{pattern}'."
+            )
+        func = eval(f"abstract.{pattern}")
+        self.data[pattern] = func(self.data)
+        return self

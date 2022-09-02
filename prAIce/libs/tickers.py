@@ -271,3 +271,55 @@ class TechnicalAnalysis:
         )
         func = eval(f"abstract.{indicator}")
         self.data[indicator] = func(self.data[source])
+
+    def cdl_pattern(self, pattern: str):
+        """Candlestick pattern recognition.
+
+        Args:
+            pattern (str): Candlestick pattern to be recognized. Valid patterns:
+                "CDL3STARSINSOUTH", "CDLABANDONEDBABY", "CDLCLOSINGMARUBOZU",
+                "CDLCOUNTERATTACK", "CDLDARKCLOUDCOVER", "CDLDOJI",
+                "CDLDOJISTAR", "CDLDRAGONFLYDOJI", "CDLENGULFING",
+                "CDLEVENINGDOJISTAR", "CDLEVENINGSTAR", "CDLGRAVESTONEDOJI",
+                "CDLHAMMER", "CDLHANGINGMAN", "CDLHARAMI", "CDLINVERTEDHAMMER",
+                "CDLMARUBOZU", "CDLMORNINGDOJISTAR", "CDLMORNINGSTAR", "CDLPIERCING",
+                "CDLSHOOTINGSTAR", "CDLTAKURI", "CDLTRISTAR"
+
+        Raises:
+            ValueError: If given pattern is not in list of valid patterns.
+
+        Returns:
+            self: Instantiated class object. Use self.data property to get transformed data.
+        """
+        patterns = [
+            "CDL3STARSINSOUTH",
+            "CDLABANDONEDBABY",
+            "CDLCLOSINGMARUBOZU",
+            "CDLCOUNTERATTACK",
+            "CDLDARKCLOUDCOVER",
+            "CDLDOJI",
+            "CDLDOJISTAR",
+            "CDLDRAGONFLYDOJI",
+            "CDLENGULFING",
+            "CDLEVENINGDOJISTAR",
+            "CDLEVENINGSTAR",
+            "CDLGRAVESTONEDOJI",
+            "CDLHAMMER",
+            "CDLHANGINGMAN",
+            "CDLHARAMI",
+            "CDLINVERTEDHAMMER",
+            "CDLMARUBOZU",
+            "CDLMORNINGDOJISTAR",
+            "CDLMORNINGSTAR",
+            "CDLPIERCING",
+            "CDLSHOOTINGSTAR",
+            "CDLTAKURI",
+            "CDLTRISTAR",
+        ]
+        if pattern not in patterns:
+            raise ValueError(
+                f"Expected pattern to be one of {patterns} but got '{pattern}'."
+            )
+        func = eval(f"abstract.{pattern}")
+        self.data[pattern] = func(self.data)
+        return self

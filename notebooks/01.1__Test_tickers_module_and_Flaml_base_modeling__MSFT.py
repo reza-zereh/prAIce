@@ -40,15 +40,21 @@ from tickers import Instrument
 
 ticker = "MSFT"
 period = "3y"
-forecast_period = 1
+add_ta_indicators = True
+ta_indicators_config_fn = "all_default"  # all_default.yaml
 lookback_period = 0
+forecast_period = 1
+
 
 data = Instrument(
     ticker=ticker,
     period=period,
+    add_ta_indicators=add_ta_indicators,
+    ta_indicators_config_fn=ta_indicators_config_fn,
     lookback_period=lookback_period,
     forecast_period=forecast_period,
 ).get_data()
+
 y = f"target_{forecast_period}_period"
 # -
 
@@ -109,12 +115,17 @@ y_df["error"] = y_df["actual"] - y_df["preds"]
 
 test_df = pd.concat([X_test, y_df], axis=1)
 
+rmse_val = metrics.mean_squared_error(y_val, y_pred_val, squared=False)
+mae_val = metrics.mean_absolute_error(y_val, y_pred_val)
+print(f"RMSE val: {rmse_val:.4f}")
+print(f"MAE val: {mae_val:.4f}\n")
+
 rmse_test = metrics.mean_squared_error(
     y_df["actual"], y_df["preds"], squared=False
 )
-rmse_val = metrics.mean_squared_error(y_val, y_pred_val, squared=False)
+mae_test = metrics.mean_absolute_error(y_df["actual"], y_df["preds"])
 print(f"RMSE test: {rmse_test:.4f}")
-print(f"RMSE val: {rmse_val:.4f}")
+print(f"MAE test: {mae_test:.4f}")
 # -
 
 plt.plot(y_df["actual"], label="Actual")
@@ -125,6 +136,7 @@ plt.legend()
 plt.show()
 
 plt.scatter(y_df.index, y_df["error"], label="Errors")
+plt.title(f"{ticker} - MAE: {mae_test:.4f}")
 plt.xticks(rotation=45)
 plt.legend()
 plt.show()

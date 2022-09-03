@@ -40,15 +40,21 @@ from tickers import Instrument
 
 ticker = "AMZN"
 period = "3y"
-forecast_period = 1
+add_ta_indicators = True
+ta_indicators_config_fn = "all_default"
 lookback_period = 0
+forecast_period = 1
+
 
 data = Instrument(
     ticker=ticker,
     period=period,
+    add_ta_indicators=add_ta_indicators,
+    ta_indicators_config_fn=ta_indicators_config_fn,
     lookback_period=lookback_period,
     forecast_period=forecast_period,
 ).get_data()
+
 y = f"target_{forecast_period}_period"
 # -
 

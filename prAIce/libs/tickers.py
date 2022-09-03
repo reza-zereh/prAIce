@@ -396,6 +396,9 @@ class VariablesBuilder(BaseEstimator, TransformerMixin):
                 X[f"{self.source_col_}_minus_{i}_period"] = X[
                     self.source_col_
                 ].shift(i)
+                X[f"{self.source_col_}_minus_{i}_pct_change"] = X[
+                    self.source_col_
+                ].pct_change(i)
         X[f"{self.target_col_prefix}{self.forecast_period}_period"] = X[
             self.source_col_
         ].shift(-self.forecast_period)

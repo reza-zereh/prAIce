@@ -1,8 +1,10 @@
+import os
 import pathlib
 
 import pandas as pd
 import paths
 import talib as ta
+import yaml
 import yfinance as yf
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.utils.validation import check_is_fitted
@@ -396,6 +398,9 @@ class VariablesBuilder(BaseEstimator, TransformerMixin):
                 X[f"{self.source_col_}_minus_{i}_period"] = X[
                     self.source_col_
                 ].shift(i)
+                X[f"{self.source_col_}_minus_{i}_pct_change"] = X[
+                    self.source_col_
+                ].pct_change(i)
         X[f"{self.target_col_prefix}{self.forecast_period}_period"] = X[
             self.source_col_
         ].shift(-self.forecast_period)
@@ -411,7 +416,8 @@ class Instrument:
         interval: str = "1d",
         start_date: str = None,
         end_date: str = None,
-        add_all_ta_indicators: bool = True,
+        add_ta_indicators: bool = True,
+        ta_indicators_config_fn="all_default",
         lookback_period: int = 0,
         forecast_period: int = 1,
     ):
@@ -420,74 +426,44 @@ class Instrument:
         self.interval = interval
         self.start_date = start_date
         self.end_date = end_date
-        self.add_ta_indicators = add_all_ta_indicators
+        self.add_ta_indicators = add_ta_indicators
+        self.ta_indicators_config_fn = ta_indicators_config_fn
         self.lookback_period = lookback_period
         self.forecast_period = forecast_period
 
     @staticmethod
-    def add_all_indicators(data: pd.DataFrame) -> pd.DataFrame:
-        """Add all of the technical analysis indicators to given DataFrame using default parameters.
+    def add_indicators_from_config(
+        data: pd.DataFrame, config_fn: str
+    ) -> pd.DataFrame:
+        """Add technical analysis indicators specified in YAML config file to given DataFrame.
 
         Args:
             data (pd.DataFrame): DataFrame to be transformed.
+            config_fn (str, optional): Name of the YAML config file with '.yaml' suffix.
+
+        Raises:
+            FileNotFoundError: Throws error if YAML file doesn't exist.
 
         Returns:
             pd.DataFrame: DataFrame with technical indicators added to it.
         """
+        fp = str(paths.TA_CONFIGS_DIR / f"{config_fn}.yaml")
+        if not os.path.exists(fp):
+            raise FileNotFoundError(f"There is no such a file named {fp}")
+
+        with open(fp, "r") as f:
+            config = yaml.safe_load(f)
+        indicators = config["indicators"]
         ta_obj = TechnicalAnalysis(data)
-        (
-            ta_obj.moving_average("SMA")
-            .moving_average("EMA")
-            .moving_average("WMA")
-            .moving_average("DEMA")
-            .moving_average("KAMA")
-            .moving_average("TRIMA")
-            .bollinger_bands()
-            .momentum("ADX")
-            .momentum("ADXR")
-            .momentum("CCI")
-            .momentum("DX")
-            .momentum("MFI")
-            .momentum("MOM")
-            .momentum("ROC")
-            .momentum("ROCP")
-            .momentum("ROCR")
-            .momentum("RSI")
-            .momentum("TRIX")
-            .momentum("WILLR")
-            .macd()
-            .stochastic()
-            .cycle("HT_DCPERIOD")
-            .cycle("HT_DCPHASE")
-            .cycle("HT_TRENDMODE")
-            .cdl_pattern("CDL3STARSINSOUTH")
-            .cdl_pattern("CDLABANDONEDBABY")
-            .cdl_pattern("CDLCLOSINGMARUBOZU")
-            .cdl_pattern("CDLCOUNTERATTACK")
-            .cdl_pattern("CDLDARKCLOUDCOVER")
-            .cdl_pattern("CDLDOJI")
-            .cdl_pattern("CDLDOJISTAR")
-            .cdl_pattern("CDLDRAGONFLYDOJI")
-            .cdl_pattern("CDLENGULFING")
-            .cdl_pattern("CDLEVENINGDOJISTAR")
-            .cdl_pattern("CDLEVENINGSTAR")
-            .cdl_pattern("CDLGRAVESTONEDOJI")
-            .cdl_pattern("CDLHAMMER")
-            .cdl_pattern("CDLHANGINGMAN")
-            .cdl_pattern("CDLHARAMI")
-            .cdl_pattern("CDLINVERTEDHAMMER")
-            .cdl_pattern("CDLMARUBOZU")
-            .cdl_pattern("CDLMORNINGDOJISTAR")
-            .cdl_pattern("CDLMORNINGSTAR")
-            .cdl_pattern("CDLPIERCING")
-            .cdl_pattern("CDLSHOOTINGSTAR")
-            .cdl_pattern("CDLTAKURI")
-            .cdl_pattern("CDLTRISTAR")
-        )
+        for method, settings in indicators.items():
+            for kwargs in settings:
+                func = getattr(TechnicalAnalysis, method)
+                func(ta_obj, **kwargs)
         return ta_obj.data
 
     def get_data(self):
-        """Prepare the historical data with technical analysis features, and also lookback and forecast variables.
+        """Prepare the historical data with technical analysis features,
+            and also lookback and forecast variables.
 
         Returns:
             pd.DataFrame: Processed DataFrame.
@@ -499,7 +475,9 @@ class Instrument:
             end_date=self.end_date,
         )
         if self.add_ta_indicators:
-            self.data_ = self.add_all_indicators(self.data_)
+            self.data_ = self.add_indicators_from_config(
+                self.data_, self.ta_indicators_config_fn
+            )
 
         self.data_ = VariablesBuilder(
             forecast_period=self.forecast_period,

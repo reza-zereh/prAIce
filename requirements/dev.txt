@@ -27,6 +27,7 @@ mlflow==1.28.0
 scikit-learn==1.0.1
 lightgbm==3.3.2
 xgboost==1.4.2
+catboost==1.0.6
 torch==1.10.1
 transformers==4.20.0
 FLAML==1.0.10

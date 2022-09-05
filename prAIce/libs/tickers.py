@@ -350,18 +350,27 @@ class VariablesBuilder(BaseEstimator, TransformerMixin):
         forecast_period: int = 1,
         lookback_period: int = 0,
         target_col_prefix: str = "target_",
+        add_past_close_prices: bool = True,
+        add_past_pct_changes: bool = True,
     ):
         """Create forecast and lookback columns for a given DataFrame.
 
         Args:
             forecast_period (int, optional): Forecast period; 1 means next period, 7 means next 7 period, etc.
                 Defaults to 1.
-            lookback_period (int, optional): Number of periods in past to build features from. Defaults to 0.
+            lookback_period (int, optional): Number of periods in past to build
+                features from. Defaults to 0.
             target_col_prefix (str, optional): Target colum prefix. Defaults to "target_".
+            add_past_close_prices (bool, optional): Whether to add N previous
+                close prices. Defaults to True.
+            add_past_pct_changes (bool, optional): Whether to add N previous
+                close price percentage changes. Defaults to True.
         """
         self.forecast_period = forecast_period
         self.lookback_period = lookback_period
         self.target_col_prefix = target_col_prefix
+        self.add_past_close_prices = add_past_close_prices
+        self.add_past_pct_changes = add_past_pct_changes
 
     def fit(self, X: pd.DataFrame = None, source: str = "close"):
         """Fit the transformer.
@@ -395,15 +404,60 @@ class VariablesBuilder(BaseEstimator, TransformerMixin):
         X = X.copy()
         if self.lookback_period > 0:
             for i in range(1, self.lookback_period + 1):
-                X[f"{self.source_col_}_minus_{i}_period"] = X[
-                    self.source_col_
-                ].shift(i)
-                X[f"{self.source_col_}_minus_{i}_pct_change"] = X[
-                    self.source_col_
-                ].pct_change(i)
+                if self.add_past_close_prices:
+                    X[f"{self.source_col_}_minus_{i}_period"] = X[
+                        self.source_col_
+                    ].shift(i)
+
+                if self.add_past_pct_changes:
+                    X[f"{self.source_col_}_minus_{i}_pct_change"] = X[
+                        self.source_col_
+                    ].pct_change(i)
         X[f"{self.target_col_prefix}{self.forecast_period}_period"] = X[
             self.source_col_
         ].shift(-self.forecast_period)
+        return X
+
+
+class AddDateParts:
+    """Add date features to a DataFrame.
+
+    Args:
+        has_date_index (bool, optional): Whether the DataFrame has DateTimeIndex.
+            Defaults to True.
+        date_col (str, optional): Name of the column that stores dates if
+            'has_date_index = False'. Defaults to "date".
+    """
+
+    def __init__(self, has_date_index: bool = True, date_col: str = "date"):
+        self.has_date_index = has_date_index
+        self.date_col = date_col
+
+    def transform(self, X: pd.DataFrame, drop: bool = True) -> pd.DataFrame:
+        """Transform DataFrame by adding date features.
+
+        Args:
+            X (pd.DataFrame): DataFrame to be transformed.
+            drop (bool, optional): If dates are stored in a column other than index,
+                drops that column. Defaults to True.
+
+        Returns:
+            pd.DataFrame: Transformed DataFrame with these new columns:
+                'day_of_wee', 'day_of_month', 'day_of_year', 'week', 'month', 'quarter'.
+        """
+        if self.has_date_index:
+            self.date_ = pd.to_datetime(X.index)
+        else:
+            self.date_ = pd.to_datetime(X[self.date_col])
+        X = X.copy()
+        X["day_of_week"] = self.date_.day_of_week
+        X["day_of_month"] = self.date_.day
+        X["day_of_year"] = self.date_.day_of_year
+        X["week"] = self.date_.isocalendar().week
+        X["month"] = self.date_.month
+        X["quarter"] = self.date_.quarter
+        if drop and not self.has_date_index:
+            X = X.drop(columns=[self.date_col])
         return X
 
 

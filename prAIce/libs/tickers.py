@@ -472,6 +472,7 @@ class Instrument:
         end_date: str = None,
         add_ta_indicators: bool = True,
         ta_indicators_config_fn="all_default",
+        add_date_features=True,
         lookback_period: int = 0,
         forecast_period: int = 1,
     ):
@@ -482,6 +483,7 @@ class Instrument:
         self.end_date = end_date
         self.add_ta_indicators = add_ta_indicators
         self.ta_indicators_config_fn = ta_indicators_config_fn
+        self.add_date_features = add_date_features
         self.lookback_period = lookback_period
         self.forecast_period = forecast_period
 
@@ -531,6 +533,11 @@ class Instrument:
         if self.add_ta_indicators:
             self.data_ = self.add_indicators_from_config(
                 self.data_, self.ta_indicators_config_fn
+            )
+
+        if self.add_date_features:
+            self.data_ = AddDateParts(has_date_index=True).transform(
+                X=self.data_
             )
 
         self.data_ = VariablesBuilder(

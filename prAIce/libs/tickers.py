@@ -347,30 +347,30 @@ class TechnicalAnalysis:
 class VariablesBuilder(BaseEstimator, TransformerMixin):
     def __init__(
         self,
-        forecast_period: int = 1,
         lookback_period: int = 0,
-        target_col_prefix: str = "target_",
-        add_past_close_prices: bool = True,
+        add_past_close_prices: bool = False,
         add_past_pct_changes: bool = True,
+        forecast_period: int = 1,
+        target_col_prefix: str = "target_",
     ):
-        """Create forecast and lookback columns for a given DataFrame.
+        """Create lookback and forecast columns for a given DataFrame.
 
         Args:
-            forecast_period (int, optional): Forecast period; 1 means next period, 7 means next 7 period, etc.
-                Defaults to 1.
             lookback_period (int, optional): Number of periods in past to build
                 features from. Defaults to 0.
-            target_col_prefix (str, optional): Target colum prefix. Defaults to "target_".
             add_past_close_prices (bool, optional): Whether to add N previous
                 close prices. Defaults to True.
             add_past_pct_changes (bool, optional): Whether to add N previous
                 close price percentage changes. Defaults to True.
+            forecast_period (int, optional): Forecast period; 1 means next period, 7 means next 7 period, etc.
+                Defaults to 1.
+            target_col_prefix (str, optional): Target colum prefix. Defaults to "target_".
         """
-        self.forecast_period = forecast_period
         self.lookback_period = lookback_period
-        self.target_col_prefix = target_col_prefix
         self.add_past_close_prices = add_past_close_prices
         self.add_past_pct_changes = add_past_pct_changes
+        self.forecast_period = forecast_period
+        self.target_col_prefix = target_col_prefix
 
     def fit(self, X: pd.DataFrame = None, source: str = "close"):
         """Fit the transformer.
@@ -474,6 +474,8 @@ class Instrument:
         ta_indicators_config_fn="all_default",
         add_date_features=True,
         lookback_period: int = 0,
+        add_past_close_prices=False,
+        add_past_pct_changes=True,
         forecast_period: int = 1,
     ):
         self.ticker = ticker
@@ -485,6 +487,8 @@ class Instrument:
         self.ta_indicators_config_fn = ta_indicators_config_fn
         self.add_date_features = add_date_features
         self.lookback_period = lookback_period
+        self.add_past_close_prices = add_past_close_prices
+        self.add_past_pct_changes = add_past_pct_changes
         self.forecast_period = forecast_period
 
     @staticmethod
@@ -542,6 +546,8 @@ class Instrument:
 
         self.data_ = VariablesBuilder(
             forecast_period=self.forecast_period,
+            add_past_close_prices=self.add_past_close_prices,
+            add_past_pct_changes=self.add_past_pct_changes,
             lookback_period=self.lookback_period,
         ).fit_transform(self.data_)
         return self.data_

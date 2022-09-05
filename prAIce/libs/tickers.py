@@ -59,6 +59,9 @@ class Ticker:
         self.history: pd.DataFrame = self.yfticker.history(
             period=period, interval=interval, start=start_date, end=end_date
         )
+        self.history = self.history.drop(
+            columns=["Dividends", "Stock Splits"], errors="ignore"
+        )
         self.history = self.history.rename(
             columns={
                 "Open": "open",
@@ -66,8 +69,6 @@ class Ticker:
                 "Low": "low",
                 "Close": "close",
                 "Volume": "volume",
-                "Dividends": "dividends",
-                "Stock Splits": "stock_splits",
             }
         )
         if save:

@@ -350,18 +350,27 @@ class VariablesBuilder(BaseEstimator, TransformerMixin):
         forecast_period: int = 1,
         lookback_period: int = 0,
         target_col_prefix: str = "target_",
+        add_past_close_prices: bool = True,
+        add_past_pct_changes: bool = True,
     ):
         """Create forecast and lookback columns for a given DataFrame.
 
         Args:
             forecast_period (int, optional): Forecast period; 1 means next period, 7 means next 7 period, etc.
                 Defaults to 1.
-            lookback_period (int, optional): Number of periods in past to build features from. Defaults to 0.
+            lookback_period (int, optional): Number of periods in past to build
+                features from. Defaults to 0.
             target_col_prefix (str, optional): Target colum prefix. Defaults to "target_".
+            add_past_close_prices (bool, optional): Whether to add N previous
+                close prices. Defaults to True.
+            add_past_pct_changes (bool, optional): Whether to add N previous
+                close price percentage changes. Defaults to True.
         """
         self.forecast_period = forecast_period
         self.lookback_period = lookback_period
         self.target_col_prefix = target_col_prefix
+        self.add_past_close_prices = add_past_close_prices
+        self.add_past_pct_changes = add_past_pct_changes
 
     def fit(self, X: pd.DataFrame = None, source: str = "close"):
         """Fit the transformer.
@@ -395,12 +404,15 @@ class VariablesBuilder(BaseEstimator, TransformerMixin):
         X = X.copy()
         if self.lookback_period > 0:
             for i in range(1, self.lookback_period + 1):
-                X[f"{self.source_col_}_minus_{i}_period"] = X[
-                    self.source_col_
-                ].shift(i)
-                X[f"{self.source_col_}_minus_{i}_pct_change"] = X[
-                    self.source_col_
-                ].pct_change(i)
+                if self.add_past_close_prices:
+                    X[f"{self.source_col_}_minus_{i}_period"] = X[
+                        self.source_col_
+                    ].shift(i)
+
+                if self.add_past_pct_changes:
+                    X[f"{self.source_col_}_minus_{i}_pct_change"] = X[
+                        self.source_col_
+                    ].pct_change(i)
         X[f"{self.target_col_prefix}{self.forecast_period}_period"] = X[
             self.source_col_
         ].shift(-self.forecast_period)

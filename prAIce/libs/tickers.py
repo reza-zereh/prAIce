@@ -551,6 +551,9 @@ class Instrument:
             test_count = int(n * test_size) if environment == "research" else 1
             train_count = int(n * train_size)
             val_count = n - (train_count + test_count)
+            if val_size == 0:
+                val_count = 0
+                train_count += 1
         elif type(train_size) == int:
             train_count = train_size
             val_count = val_size

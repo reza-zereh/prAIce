@@ -526,7 +526,7 @@ class Instrument:
         return ta_obj.data
 
     @staticmethod
-    def __split_data(
+    def __split_research_data(
         data: pd.DataFrame,
         train_size: Union[float, int] = 1.0,
         val_size: Union[float, int] = 0.0,
@@ -586,6 +586,64 @@ class Instrument:
             y_test,
         )
 
+    @staticmethod
+    def __split_prod_data(
+        data: pd.DataFrame,
+        train_size: Union[float, int] = 1.0,
+        val_size: Union[float, int] = 0.0,
+        y: Union[str, None] = None,
+        dropna: bool = False,
+    ):
+        # TODO: Write docstring
+        assert type(train_size) == type(val_size)(
+            "All of the 'train_size', 'val_size', and 'test_size' "
+            "should be of same type. Either float or int."
+        )
+
+        n = len(data)
+        if type(train_size) == float:
+            assert math.isclose(
+                sum([train_size, val_size]), 1
+            ), "'train_size', 'val_size', and 'test_size' should sum up to 1.0"
+
+            val_count = int(n * val_size)
+            test_count = 1
+            train_count = n - (val_count + test_count)
+
+        elif type(train_size) == int:
+            assert sum([train_size, val_size]) == n - 1, (
+                "'train_size', 'val_size' should sum up "
+                f"to length of ('data' - 1) which is {n-1}"
+            )
+            train_count = train_size
+            val_count = val_size
+            test_count = 1
+
+        train = data.iloc[0:train_count].copy()
+        val = data.iloc[train_count : (train_count + val_count)].copy()
+        test = data.iloc[
+            (train_count + val_count) : (train_count + val_count + test_count)
+        ].copy()
+
+        if dropna:
+            train = train.dropna()
+            val = val.dropna()
+
+        y_train = y_val = y_test = None
+        if y is not None:
+            assert y in data.columns, f"'{y}' not found in axis"
+            y_train = train.pop(y)
+            y_val = val.pop(y)
+
+        return (
+            train,
+            val,
+            test,
+            y_train,
+            y_val,
+            y_test,
+        )
+
     def get_data(
         self,
         train_size: Union[float, int] = 0.7,
@@ -593,6 +651,7 @@ class Instrument:
         test_size: Union[float, int] = 0.1,
         separate_y: bool = True,
         dropna: bool = False,
+        environment: str = "research",
     ):
         """Prepare the historical data with technical analysis features,
             and also lookback and forecast variables.
@@ -627,12 +686,26 @@ class Instrument:
         )
         self.data_ = vb.fit_transform(self.data_)
 
-        self.splits_ = self.__split_data(
-            data=self.data_,
-            train_size=train_size,
-            val_size=val_size,
-            test_size=test_size,
-            y=vb.target_name_ if separate_y else None,
-            dropna=dropna,
-        )
+        if environment == "research":
+            self.splits_ = self.__split_research_data(
+                data=self.data_,
+                train_size=train_size,
+                val_size=val_size,
+                test_size=test_size,
+                y=vb.target_name_ if separate_y else None,
+                dropna=dropna,
+            )
+        elif environment == "prod":
+            self.splits_ = self.__split_prod_data(
+                data=self.data_,
+                train_size=train_size,
+                val_size=val_size,
+                y=vb.target_name_ if separate_y else None,
+                dropna=dropna,
+            )
+        else:
+            raise ValueError(
+                "Expected 'environment' to be 'research' or 'prod', "
+                f"but got '{environment}'."
+            )
         return self.splits_

@@ -20,7 +20,7 @@ class Ticker:
         ticker (str): Ticker name e.g MSFT, APPL, GLD
     """
 
-    def __init__(self, ticker: str, save: bool = True) -> None:
+    def __init__(self, ticker: str) -> None:
         # TODO: Check whether ticker is valid yfinance ticker
         self.ticker = ticker
         self.yfticker = yf.Ticker(ticker)
@@ -42,7 +42,7 @@ class Ticker:
         interval: str = "1d",
         start_date: str = None,
         end_date: str = None,
-        save: bool = True,
+        save: bool = False,
     ) -> pd.DataFrame:
         """Returns historical prices from Yahoo Finance source.
 
@@ -53,7 +53,7 @@ class Ticker:
                 Defaults to "1d".
             start_date (str, optional): Download start date string (YYYY-MM-DD). Defaults to None.
             end_date (str, optional): Download end date string (YYYY-MM-DD). Defaults to None.
-            save (bool, optional): Whether to store historical data into disk. Defaults to True.
+            save (bool, optional): Whether to store historical data into disk. Defaults to False.
 
         Returns:
             pd.DataFrame: Historical prices.

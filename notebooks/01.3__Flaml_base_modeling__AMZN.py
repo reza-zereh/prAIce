@@ -43,10 +43,11 @@ period = "3y"
 add_ta_indicators = True
 ta_indicators_config_fn = "all_default"
 add_date_features = True
-lookback_period = 5
+lookback_period = 0
 add_past_close_prices = False
-add_past_pct_changes = True
+add_past_pct_changes = False
 forecast_period = 1
+environment = "research"
 
 
 X_train, X_val, X_test, y_train, y_val, y_test = Instrument(
@@ -57,11 +58,12 @@ X_train, X_val, X_test, y_train, y_val, y_test = Instrument(
     lookback_period=lookback_period,
     forecast_period=forecast_period,
 ).get_data(
-    train_size=0.75,
-    val_size=0.20,
-    test_size=0.05,
+    train_size=0.80,
+    val_size=0.16,
+    test_size=0.04,
     separate_y=True,
     dropna=True,
+    environment=environment,
 )
 
 print(
@@ -73,6 +75,10 @@ print(
     y_test.shape,
 )
 # -
+
+X_train
+
+# ## Regression task:
 
 automl = AutoML()
 automl_settings = {
@@ -89,6 +95,7 @@ automl_settings = {
         "catboost",
     ],
     "early_stop": True,
+    "seed": 42,
 }
 automl.fit(
     X_train=X_train,
@@ -104,12 +111,6 @@ y_pred_val = automl.predict(X_val)
 y_pred = automl.predict(X_test)
 
 # +
-# RMSE val: 4.6882
-# MAE val: 3.5261
-
-# RMSE test: 6.3884
-# MAE test: 5.1652
-
 y_df = pd.DataFrame(index=y_test.index)
 y_df["actual"] = y_test.values
 y_df["preds"] = y_pred
@@ -144,3 +145,101 @@ plt.legend()
 plt.show()
 
 test_df[(test_df["error"] > -2) & (test_df["error"] < 2)]
+
+# ## TS_Forecast task:
+
+# +
+# %%time
+
+ticker = "AMZN"
+period = "3y"
+add_ta_indicators = False
+ta_indicators_config_fn = "all_default"
+add_date_features = False
+lookback_period = 0
+add_past_close_prices = False
+add_past_pct_changes = False
+forecast_period = 1
+environment = "research"
+
+
+X_train, X_val, X_test, y_train, y_val, y_test = Instrument(
+    ticker=ticker,
+    period=period,
+    add_ta_indicators=add_ta_indicators,
+    ta_indicators_config_fn=ta_indicators_config_fn,
+    lookback_period=lookback_period,
+    forecast_period=forecast_period,
+).get_data(
+    train_size=0.96,
+    val_size=0.0,
+    test_size=0.04,
+    separate_y=True,
+    dropna=True,
+    environment=environment,
+)
+
+print(
+    X_train.shape,
+    X_val.shape,
+    X_test.shape,
+    y_train.shape,
+    y_val.shape,
+    y_test.shape,
+)
+
+# +
+X_train_dates = pd.DataFrame(
+    pd.to_datetime(X_train.index.values), columns=["date"]
+)
+X_test_dates = pd.DataFrame(
+    pd.to_datetime(X_test.index.values), columns=["date"]
+)
+
+X_train_dates.shape, X_test_dates.shape
+# -
+
+X_train_dates
+
+# +
+automl = AutoML()
+
+automl.fit(
+    X_train=X_train_dates,  # a single column of timestamp
+    y_train=y_train.values,  # value for each timestamp
+    period=X_test.shape[0],  # time horizon to forecast, e.g., 12 months
+    task="ts_forecast",
+    time_budget=400,  # time budget in seconds
+    metric="mape",
+    eval_method="holdout",
+    estimator_list=[
+        "lgbm",
+        "rf",
+        "xgboost",
+        "extra_tree",
+        "prophet",
+    ],
+    seed=42,
+)
+# -
+
+y_pred = automl.predict(X_test_dates)
+
+y_df = pd.DataFrame(index=y_test.index)
+y_df["actual"] = y_test.values
+y_df["preds"] = y_pred
+y_df["error"] = y_df["actual"] - y_df["preds"]
+
+rmse_test = metrics.mean_squared_error(
+    y_df["actual"], y_df["preds"], squared=False
+)
+mae_test = metrics.mean_absolute_error(y_df["actual"], y_df["preds"])
+print(f"RMSE test: {rmse_test:.4f}")
+print(f"MAE test: {mae_test:.4f}")
+
+plt.plot(y_df["actual"], label="Actual")
+plt.plot(y_df["preds"], label="Predicted")
+plt.title(f"{ticker} - RMSE: {rmse_test:.4f}")
+plt.xticks(rotation=45)
+plt.legend()
+plt.show()

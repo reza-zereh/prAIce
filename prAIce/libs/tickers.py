@@ -20,7 +20,7 @@ class Ticker:
         ticker (str): Ticker name e.g MSFT, APPL, GLD
     """
 
-    def __init__(self, ticker: str, save: bool = True) -> None:
+    def __init__(self, ticker: str) -> None:
         # TODO: Check whether ticker is valid yfinance ticker
         self.ticker = ticker
         self.yfticker = yf.Ticker(ticker)
@@ -42,7 +42,7 @@ class Ticker:
         interval: str = "1d",
         start_date: str = None,
         end_date: str = None,
-        save: bool = True,
+        save: bool = False,
     ) -> pd.DataFrame:
         """Returns historical prices from Yahoo Finance source.
 
@@ -53,7 +53,7 @@ class Ticker:
                 Defaults to "1d".
             start_date (str, optional): Download start date string (YYYY-MM-DD). Defaults to None.
             end_date (str, optional): Download end date string (YYYY-MM-DD). Defaults to None.
-            save (bool, optional): Whether to store historical data into disk. Defaults to True.
+            save (bool, optional): Whether to store historical data into disk. Defaults to False.
 
         Returns:
             pd.DataFrame: Historical prices.
@@ -533,8 +533,14 @@ class Instrument:
         test_size: Union[float, int] = 0.0,
         y: Union[str, None] = None,
         dropna: bool = False,
+        environment: str = "research",
     ):
         # TODO: Write docstring
+        assert environment == "research" or environment == "prod", (
+            "Expected 'environment' to be 'research' or 'prod', "
+            f"but got '{environment}'."
+        )
+
         assert type(train_size) == type(val_size) == type(test_size), (
             "All of the 'train_size', 'val_size', and 'test_size' "
             "should be of same type. Either float or int."
@@ -542,23 +548,18 @@ class Instrument:
 
         n = len(data)
         if type(train_size) == float:
-            assert math.isclose(
-                sum([train_size, val_size, test_size]), 1
-            ), "'train_size', 'val_size', and 'test_size' should sum up to 1.0"
-
-            val_count = int(n * val_size)
-            test_count = int(n * test_size)
-            train_count = n - (val_count + test_count)
-
+            test_count = int(n * test_size) if environment == "research" else 1
+            train_count = int(n * train_size)
+            val_count = n - (train_count + test_count)
         elif type(train_size) == int:
-            assert sum([train_size, val_size, test_size]) == n, (
-                "'train_size', 'val_size', and 'test_size' should sum up "
-                f"to length of 'data' which is {n}"
-            )
             train_count = train_size
             val_count = val_size
-            test_count = test_size
+            test_count = test_size if environment == "research" else 1
 
+        assert sum([train_count, val_count, test_count]) == n, (
+            f"Number of samples doesn't add up to size of data ({n}). "
+            "Check 'train_size', 'val_size', and 'test_size'."
+        )
         train = data.iloc[0:train_count].copy()
         val = data.iloc[train_count : (train_count + val_count)].copy()
         test = data.iloc[
@@ -568,11 +569,12 @@ class Instrument:
         if dropna:
             train = train.dropna()
             val = val.dropna()
-            test = test.dropna()
+            if environment == "research":
+                test = test.dropna()
 
         y_train = y_val = y_test = None
         if y is not None:
-            assert y in data.columns, f"'{y}' not found in axis"
+            assert y in data.columns, f"'{y}' not found in the axis"
             y_train = train.pop(y)
             y_val = val.pop(y)
             y_test = test.pop(y)
@@ -593,15 +595,26 @@ class Instrument:
         test_size: Union[float, int] = 0.1,
         separate_y: bool = True,
         dropna: bool = False,
+        environment: str = "research",
     ):
         """Prepare the historical data with technical analysis features,
-            and also lookback and forecast variables.
+            lookback and forecast variables. It also splits data into train, validation, and test sets.
+
+        Args:
+            train_size (Union[float, int], optional): If float, size of training data in percentage.
+                If int, number of training samples. Defaults to 0.7.
+            val_size (Union[float, int], optional): If float, size of validation data in percentage.
+                If int, number of validation samples. Defaults to 0.2.
+            test_size (Union[float, int], optional): If float, size of test data in percentage.
+                If int, number of test samples. Defaults to 0.1.
+            separate_y (bool, optional): Whether to separate features and target column. Defaults to True.
+            dropna (bool, optional): Whether to drop rows that contain null value(s). Defaults to False.
+            environment (str, optional): Flag to control splitting strategy. Valid values: research, prod.
+                If prod, ignores 'test_size' param and get the last row as test data,
+                also y_test would be NaN. Defaults to "research".
 
         Returns:
-            pd.DataFrame: Processed DataFrame.
-
-        TODO:
-            Complete docstring
+            tuple: X_train, X_val, X_test, y_train, y_val, y_test
         """
         self.data_ = Ticker(ticker=self.ticker).get_history(
             period=self.period,
@@ -609,6 +622,7 @@ class Instrument:
             start_date=self.start_date,
             end_date=self.end_date,
         )
+
         if self.add_ta_indicators:
             self.data_ = self.add_indicators_from_config(
                 self.data_, self.ta_indicators_config_fn
@@ -634,5 +648,6 @@ class Instrument:
             test_size=test_size,
             y=vb.target_name_ if separate_y else None,
             dropna=dropna,
+            environment=environment,
         )
         return self.splits_

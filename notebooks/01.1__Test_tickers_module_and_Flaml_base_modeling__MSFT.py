@@ -41,41 +41,37 @@ from tickers import Instrument
 ticker = "MSFT"
 period = "3y"
 add_ta_indicators = True
-ta_indicators_config_fn = "all_default"  # all_default.yaml
+ta_indicators_config_fn = "all_default"
+add_date_features = True
 lookback_period = 0
+add_past_close_prices = False
+add_past_pct_changes = False
 forecast_period = 1
 
 
-data = Instrument(
+X_train, X_val, X_test, y_train, y_val, y_test = Instrument(
     ticker=ticker,
     period=period,
     add_ta_indicators=add_ta_indicators,
     ta_indicators_config_fn=ta_indicators_config_fn,
     lookback_period=lookback_period,
     forecast_period=forecast_period,
-).get_data()
-
-y = f"target_{forecast_period}_period"
-# -
-
-print(f"Original shape: {data.shape}")
-data = data.dropna()
-print(f"Shape after dropping null values: {data.shape}")
-
-data
-
-# +
-split_date = "2022-05-01"
-X_tmp = data[data.index < split_date].copy()
-y_tmp = X_tmp.pop(y)
-X_train, X_val, y_train, y_val = train_test_split(
-    X_tmp, y_tmp, test_size=0.17, shuffle=False
+).get_data(
+    train_size=0.75,
+    val_size=0.20,
+    test_size=0.05,
+    separate_y=True,
+    dropna=True,
 )
 
-X_test = data[data.index >= split_date].copy()
-y_test = X_test.pop(y)
-
-X_train.shape, y_train.shape, X_val.shape, y_val.shape, X_test.shape, y_test.shape
+print(
+    X_train.shape,
+    X_val.shape,
+    X_test.shape,
+    y_train.shape,
+    y_val.shape,
+    y_test.shape,
+)
 # -
 
 automl = AutoML()
@@ -108,6 +104,12 @@ y_pred_val = automl.predict(X_val)
 y_pred = automl.predict(X_test)
 
 # +
+# RMSE val: 7.0445
+# MAE val: 5.5146
+
+# RMSE test: 11.6954
+# MAE test: 9.1971
+
 y_df = pd.DataFrame(index=y_test.index)
 y_df["actual"] = y_test.values
 y_df["preds"] = y_pred

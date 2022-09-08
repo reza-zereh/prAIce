@@ -34,3 +34,5 @@ FLAML==1.0.10
 prophet==1.1
 TPOT==0.11.7
 TA-Lib==0.4.24
+hcrystalball==0.1.12
+statsmodels==0.13.2

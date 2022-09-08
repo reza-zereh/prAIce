@@ -4,6 +4,7 @@ from typing import Union
 import flaml
 import numpy as np
 import pandas as pd
+import supervised.automl as mljar
 import tpot
 
 
@@ -96,7 +97,43 @@ class TpotEstimator(IEstimator):
     ):
         if settings is not None and type(settings) == dict:
             self.estimator.set_params(**settings)
+        self.estimator.fit(X_train, y_train)
 
+    def predict(self, X_test: Union[np.array, pd.DataFrame]):
+        return self.estimator.predict(X_test)
+
+
+class MljarEstimator(IEstimator):
+    __model__ = "mljar"
+
+    def __init__(self, task: str = "regression"):
+        if task == "regression":
+            self.estimator = mljar.AutoML(
+                mode="Perform",
+                ml_task="regression",
+                eval_metric="rmse",
+                total_time_limit=400,
+            )
+        elif task == "classification":
+            self.estimator = mljar.AutoML(
+                mode="Perform",
+                ml_task="auto",
+                eval_metric="accuracy",
+                total_time_limit=400,
+            )
+        else:
+            raise ValueError(
+                f"Expected 'task' to be 'regression' or 'classification', but got '{task}'."
+            )
+
+    def fit(
+        self,
+        X_train: Union[np.array, pd.DataFrame],
+        y_train: Union[np.array, pd.DataFrame],
+        settings: Union[dict, None] = None,
+    ):
+        if settings is not None and type(settings) == dict:
+            self.estimator.set_params(**settings)
         self.estimator.fit(X_train, y_train)
 
     def predict(self, X_test: Union[np.array, pd.DataFrame]):

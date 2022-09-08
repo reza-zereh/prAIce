@@ -134,3 +134,4 @@ dmypy.json
 *.svg
 *.db
 catboost*/
+AutoML*/

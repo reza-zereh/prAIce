@@ -9,6 +9,8 @@ import tpot
 
 
 class IEstimator(ABC):
+    """Base Interface for AutoML classes."""
+
     @abstractmethod
     def fit(
         self,
@@ -16,10 +18,22 @@ class IEstimator(ABC):
         y_train: Union[np.array, pd.DataFrame],
         settings: Union[dict, None] = None,
     ):
+        """Train the model.
+
+        Args:
+            X_train (Union[np.array, pd.DataFrame]): Training data in shape (n, m).
+            y_train (Union[np.array, pd.DataFrame]): Labels in shape (n, ).
+            settings (Union[dict, None], optional): AutoML model params. Defaults to None.
+        """
         pass
 
     @abstractmethod
     def predict(self, X_test: Union[np.array, pd.DataFrame]):
+        """Predict label from features.
+
+        Args:
+            X_test (Union[np.array, pd.DataFrame]): Test data in shape (n, m).
+        """
         pass
 
 

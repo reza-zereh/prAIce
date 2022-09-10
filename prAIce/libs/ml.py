@@ -138,3 +138,25 @@ class MljarEstimator(IEstimator):
 
     def predict(self, X_test: Union[np.array, pd.DataFrame]):
         return self.estimator.predict(X_test)
+
+
+def learner(model: str, task: str = "regression"):
+    """Create a new learner.
+
+    Args:
+        model (str): Name of the estimator. Valid models: flaml, tpot, mljar.
+        task (str, optional): ML task. Valid tasks: regression, classification. Defaults to "regression".
+
+    Returns:
+        IEstimator: A concrete instance of one of valid IEstimator classes.
+    """
+    estimators = {
+        "flaml": FlamlEstimator,
+        "tpot": TpotEstimator,
+        "mljar": MljarEstimator,
+    }
+    assert (
+        model in estimators
+    ), f"Expected 'model' to be one of {list(estimators.keys())}, but got '{model}'."
+
+    return estimators[model](task=task)

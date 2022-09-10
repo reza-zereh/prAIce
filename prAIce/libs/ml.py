@@ -24,6 +24,13 @@ class IEstimator(ABC):
 
 
 class FlamlEstimator(IEstimator):
+    """FLAML AutoML Library.
+        https://microsoft.github.io/FLAML/docs/Getting-Started
+
+    Args:
+        task (str, optional): ML task. Valid tasks: regression, classification. Defaults to "regression".
+    """
+
     __model__ = "flaml"
 
     def __init__(self, task: str = "regression"):
@@ -56,10 +63,62 @@ class FlamlEstimator(IEstimator):
         y_train: Union[np.array, pd.DataFrame],
         settings: Union[dict, None] = None,
     ):
+        """Find and tune a model for a given task.
+
+        Args:
+            X_train (Union[np.array, pd.DataFrame]): Training data in shape (n, m).
+            y_train (Union[np.array, pd.DataFrame]): Labels in shape (n, ).
+            settings (Union[dict, None], optional): Flaml AutoML model params. Defaults to None.
+                Valid params:
+                - task
+                - metric
+                - estimator_list
+                - time_budget
+                - n_jobs
+                - eval_method
+                - split_ratio
+                - n_splits
+                - auto_augment
+                - log_file_name
+                - max_iter
+                - sample
+                - ensemble
+                - log_type
+                - model_history
+                - log_training_metric
+                - mem_thres
+                - pred_time_limit
+                - train_time_limit
+                - verbose
+                - retrain_full
+                - split_type
+                - hpo_method
+                - learner_selector
+                - starting_points
+                - n_concurrent_trials
+                - keep_search_state
+                - early_stop
+                - append_log
+                - min_sample_size
+                - use_ray
+                - metric_constraints
+                - fit_kwargs_by_estimator
+                - custom_hp
+                - skip_transform
+        """
         settings = {} if settings is None else settings
         self.estimator.fit(X_train=X_train, y_train=y_train, **settings)
 
     def predict(self, X_test: Union[np.array, pd.DataFrame]):
+        """Predict label from features.
+
+        Args:
+            X_test (Union[np.array, pd.DataFrame]): Test data in shape (n, m).
+
+        Returns:
+            An array-like of shape n * 1: each element is a predicted
+                label for an instance.
+        """
         assert (
             self.estimator.model is not None
         ), "No estimator is trained. Please run fit with enough budget."

@@ -126,6 +126,13 @@ class FlamlEstimator(IEstimator):
 
 
 class TpotEstimator(IEstimator):
+    """TPOT AutoML Library.
+        http://epistasislab.github.io/tpot/
+
+    Args:
+        task (str, optional): ML task. Valid tasks: regression, classification. Defaults to "regression".
+    """
+
     __model__ = "tpot"
 
     def __init__(self, task: str = "regression"):
@@ -154,11 +161,50 @@ class TpotEstimator(IEstimator):
         y_train: Union[np.array, pd.DataFrame],
         settings: Union[dict, None] = None,
     ):
+        """Find and tune a model for a given task.
+
+        Args:
+            X_train (Union[np.array, pd.DataFrame]): Training data in shape (n, m).
+            y_train (Union[np.array, pd.DataFrame]): Labels in shape (n, ).
+            settings (Union[dict, None], optional): TPOT AutoML model params. Defaults to None.
+                Valid params:
+                - config_dict
+                - crossover_rate
+                - cv
+                - disable_update_check
+                - early_stop
+                - generations
+                - log_file
+                - max_eval_time_mins
+                - max_time_mins
+                - memory
+                - mutation_rate
+                - n_jobs
+                - offspring_size
+                - periodic_checkpoint_folder
+                - population_size
+                - random_state
+                - scoring
+                - subsample
+                - template
+                - use_dask
+                - verbosity
+                - warm_start
+        """
         if settings is not None and type(settings) == dict:
             self.estimator.set_params(**settings)
         self.estimator.fit(X_train, y_train)
 
     def predict(self, X_test: Union[np.array, pd.DataFrame]):
+        """Predict label from features.
+
+        Args:
+            X_test (Union[np.array, pd.DataFrame]): Test data in shape (n, m).
+
+        Returns:
+            An array-like of shape n * 1: each element is a predicted
+                label for an instance.
+        """
         return self.estimator.predict(X_test)
 
 

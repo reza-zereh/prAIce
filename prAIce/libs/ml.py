@@ -209,6 +209,13 @@ class TpotEstimator(IEstimator):
 
 
 class MljarEstimator(IEstimator):
+    """mljar-supervised AutoML Library.
+        https://supervised.mljar.com/
+
+    Args:
+        task (str, optional): ML task. Valid tasks: regression, classification. Defaults to "regression".
+    """
+
     __model__ = "mljar"
 
     def __init__(self, task: str = "regression"):
@@ -237,11 +244,54 @@ class MljarEstimator(IEstimator):
         y_train: Union[np.array, pd.DataFrame],
         settings: Union[dict, None] = None,
     ):
+        """Find and tune a model for a given task.
+
+        Args:
+            X_train (Union[np.array, pd.DataFrame]): Training data in shape (n, m).
+            y_train (Union[np.array, pd.DataFrame]): Labels in shape (n, ).
+            settings (Union[dict, None], optional): MLJar AutoML model params. Defaults to None.
+                Valid params:
+                - algorithms
+                - boost_on_errors
+                - eval_metric
+                - explain_level
+                - features_selection
+                - golden_features
+                - hill_climbing_steps
+                - kmeans_features
+                - max_single_prediction_time
+                - mix_encoding
+                - ml_task
+                - mode
+                - model_time_limit
+                - n_jobs
+                - optuna_init_params
+                - optuna_time_budget
+                - optuna_verbose
+                - random_state
+                - results_path
+                - stack_models
+                - start_random_models
+                - top_models_to_improve
+                - total_time_limit
+                - train_ensemble
+                - validation_strategy
+                - verbose
+        """
         if settings is not None and type(settings) == dict:
             self.estimator.set_params(**settings)
         self.estimator.fit(X_train, y_train)
 
     def predict(self, X_test: Union[np.array, pd.DataFrame]):
+        """Predict label from features.
+
+        Args:
+            X_test (Union[np.array, pd.DataFrame]): Test data in shape (n, m).
+
+        Returns:
+            An array-like of shape n * 1: each element is a predicted
+                label for an instance.
+        """
         return self.estimator.predict(X_test)
 
 

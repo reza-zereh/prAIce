@@ -1,0 +1,29 @@
+runs:
+  - model: flaml
+    settings:
+      - estimator_list:
+          - lgbm
+          - rf
+          - xgboost
+          - extra_tree
+        time_budget: 30
+        ensemble: false
+        early_stop: true
+      - estimator_list:
+          - lgbm
+          - rf
+          - xgboost
+          - extra_tree
+          - xgb_limitdepth
+          - catboost
+        time_budget: 60
+        ensemble: true
+        early_stop: true
+  - model: tpot
+    settings:
+      - generations: 1
+        population_size: 10
+        verbosity: 2
+      - generations: 2
+        population_size: 5
+        verbosity: 2

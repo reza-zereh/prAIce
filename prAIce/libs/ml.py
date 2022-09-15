@@ -58,18 +58,23 @@ class FlamlEstimator(IEstimator):
         ]
         if task == "regression":
             self.estimator = flaml.AutoML(
-                task="regression", metric="rmse", estimator_list=estimator_list
+                task="regression",
+                metric="rmse",
+                estimator_list=estimator_list,
+                verbose=2,
             )
         elif task == "classification":
             self.estimator = flaml.AutoML(
                 task="classification",
                 metric="accuracy",
                 estimator_list=estimator_list,
+                verbose=2,
             )
         else:
             raise ValueError(
                 f"Expected 'task' to be 'regression' or 'classification', but got '{task}'."
             )
+        self.__task__ = task
 
     def fit(
         self,
@@ -168,6 +173,7 @@ class TpotEstimator(IEstimator):
             raise ValueError(
                 f"Expected 'task' to be 'regression' or 'classification', but got '{task}'."
             )
+        self.__task__ = task
 
     def fit(
         self,
@@ -251,6 +257,7 @@ class MljarEstimator(IEstimator):
             raise ValueError(
                 f"Expected 'task' to be 'regression' or 'classification', but got '{task}'."
             )
+        self.__task__ = task
 
     def fit(
         self,
@@ -309,7 +316,7 @@ class MljarEstimator(IEstimator):
         return self.estimator.predict(X_test)
 
 
-def learner(model: str, task: str = "regression"):
+def learner(model: str, task: str = "regression") -> IEstimator:
     """Create a new learner.
 
     Args:

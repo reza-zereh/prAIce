@@ -1,13 +1,12 @@
-import os
-import paths
-import mlflow
-import yaml
-import time
 import datetime
+import time
+
 import ml
+import mlflow
+import paths
+import utils
 from sklearn import metrics
 from tickers import Instrument
-import utils
 
 
 class Trainer:

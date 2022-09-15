@@ -1,16 +1,11 @@
-import os
 from abc import ABC, abstractmethod
 from typing import Union
 
 import flaml
-import mlflow
 import numpy as np
 import pandas as pd
-import paths
 import supervised.automl as mljar
 import tpot
-import yaml
-from sklearn import metrics
 
 
 class IEstimator(ABC):
@@ -63,18 +58,23 @@ class FlamlEstimator(IEstimator):
         ]
         if task == "regression":
             self.estimator = flaml.AutoML(
-                task="regression", metric="rmse", estimator_list=estimator_list
+                task="regression",
+                metric="rmse",
+                estimator_list=estimator_list,
+                verbose=2,
             )
         elif task == "classification":
             self.estimator = flaml.AutoML(
                 task="classification",
                 metric="accuracy",
                 estimator_list=estimator_list,
+                verbose=2,
             )
         else:
             raise ValueError(
                 f"Expected 'task' to be 'regression' or 'classification', but got '{task}'."
             )
+        self.__task__ = task
 
     def fit(
         self,
@@ -173,6 +173,7 @@ class TpotEstimator(IEstimator):
             raise ValueError(
                 f"Expected 'task' to be 'regression' or 'classification', but got '{task}'."
             )
+        self.__task__ = task
 
     def fit(
         self,
@@ -256,6 +257,7 @@ class MljarEstimator(IEstimator):
             raise ValueError(
                 f"Expected 'task' to be 'regression' or 'classification', but got '{task}'."
             )
+        self.__task__ = task
 
     def fit(
         self,
@@ -334,40 +336,3 @@ def learner(model: str, task: str = "regression") -> IEstimator:
     ), f"Expected 'model' to be one of {list(estimators.keys())}, but got '{model}'."
 
     return estimators[model](task=task)
-
-
-class Trainer:
-    def __init__(
-        self, experiment_name: str, ml_models_config_fn: str = "default"
-    ):
-        self.experiment_name = experiment_name
-        self.config_fp = str(
-            paths.ML_CONFIGS_DIR / f"{ml_models_config_fn}.yaml"
-        )
-
-    def run(self, X_train, y_train):
-        if not os.path.exists(self.config_fp):
-            raise FileNotFoundError(
-                f"There is no such a file named {self.config_fp}"
-            )
-
-        with open(self.config_fp, "r") as f:
-            config = yaml.safe_load(f)
-
-        mlflow.set_experiment(self.experiment_name)
-
-        for run_ in config["runs"]:
-            estimator = learner(run_["model"])
-            for params in run_["settings"]:
-                with mlflow.start_run():
-                    mlflow.log_params(params)
-                    estimator.fit(
-                        X_train=X_train, y_train=y_train, settings=params
-                    )
-                    y_pred = estimator.predict(X_train)
-                    mlflow.log_metric(
-                        "rmse",
-                        metrics.mean_squared_error(
-                            y_train, y_pred, squared=False
-                        ),
-                    )

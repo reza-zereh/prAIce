@@ -81,3 +81,9 @@ quiet = false
 whitelist-regex = []
 color = true
 generate-badge = "."
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore::UserWarning",
+    "ignore::DeprecationWarning",
+]

@@ -17,30 +17,21 @@
 import sys
 from pathlib import Path
 
-import matplotlib.pyplot as plt
-import pandas as pd
-from sklearn import metrics
-from sklearn.model_selection import train_test_split
-from tpot import TPOTRegressor
-
-plt.style.use("ggplot")
-pd.set_option("display.max_columns", None)
-
-# +
 ROOT_DIR = Path(".").resolve().parent
-LIBS_DIR = ROOT_DIR / "prAIce/libs"
-
-sys.path.append(str(LIBS_DIR))
+sys.path.append(str(ROOT_DIR))
 # -
 
-from train import Trainer
+import praice
+from praice import Trainer
+
+trainer = Trainer(
+    ticker="PYPL",
+    learners_cnf="default_ml_config",
+    datasets_cnf="default_instrument_config",
+)
 
 # +
 # %%time
 
-trainer = Trainer(
-    ticker="PYPL",
-    ml_models_config_fn="default_ml_config",
-    instrument_config_fn="default_instrument_config",
-)
 trainer.run()
+# -

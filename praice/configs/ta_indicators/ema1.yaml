@@ -1,0 +1,26 @@
+indicators:
+  moving_average:
+    - ma_type: EMA
+      period: 5
+      source: close
+    - ma_type: EMA
+      period: 8
+      source: close
+    - ma_type: EMA
+      period: 21
+      source: close
+    - ma_type: EMA
+      period: 30
+      source: close
+    - ma_type: EMA
+      period: 50
+      source: close
+  bollinger_bands:
+    - period: 20
+      std_dev: 2
+      source: close
+  macd:
+    - fast_period: 12
+      slow_period: 26
+      signal_period: 9
+      source: close

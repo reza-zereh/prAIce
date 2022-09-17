@@ -1,4 +1,4 @@
-runs:
+learners:
   - model: flaml
     settings:
       - estimator_list:

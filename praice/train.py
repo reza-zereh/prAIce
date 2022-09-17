@@ -78,11 +78,11 @@ class Trainer:
                 X_val = X_train
                 y_val = y_train
 
-            for run_ in ml_config["runs"]:
-                estimator = ml.learner(run_["model"])
+            for learner in ml_config["learners"]:
+                estimator = ml.learner(learner["model"])
                 print(f"Training {estimator.__model__} estimator ...\n")
 
-                for ml_params in run_["settings"]:
+                for ml_params in learner["settings"]:
                     t1 = time.perf_counter()
                     estimator.fit(
                         X_train=X_train, y_train=y_train, settings=ml_params

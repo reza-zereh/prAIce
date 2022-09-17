@@ -1,16 +1,16 @@
-import math
 import os
 import pathlib
 from typing import Union
 
 import pandas as pd
-import paths
 import talib as ta
 import yaml
 import yfinance as yf
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.utils.validation import check_is_fitted
 from talib import abstract
+
+from . import paths
 
 
 class Ticker:

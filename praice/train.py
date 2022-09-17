@@ -1,20 +1,23 @@
 import datetime
 import time
+from pathlib import PosixPath
+from typing import Union
 
-import ml
 import mlflow
-import paths
-import utils
 from sklearn import metrics
-from tickers import Instrument
+
+from . import ml, paths, utils
+from .tickers import Instrument
 
 
 class Trainer:
     def __init__(
         self,
         ticker: str,
-        ml_models_config_fn: str = "default_ml_config",
-        instrument_config_fn: str = "default_instrument_config",
+        learners_cnf: str = "default_ml_config",
+        datasets_cnf: str = "default_instrument_config",
+        custom_learners_cnf_fp: Union[str, PosixPath] = None,
+        custom_datasets_cnf_fp: Union[str, PosixPath] = None,
         experiment_name: str = None,
     ):
         self.ticker = ticker
@@ -23,11 +26,15 @@ class Trainer:
             if experiment_name is not None
             else f"{datetime.datetime.utcnow().date()}__{ticker}"
         )
-        self.ml_config_fp = str(
-            paths.ML_CONFIGS_DIR / f"{ml_models_config_fn}.yaml"
+        self.learners_cnf_fp = (
+            str(paths.ML_CONFIGS_DIR / f"{learners_cnf}.yaml")
+            if custom_learners_cnf_fp is None
+            else str(custom_learners_cnf_fp)
         )
-        self.instrument_config_fp = str(
-            paths.INSTRUMENT_CONFIGS_DIR / f"{instrument_config_fn}.yaml"
+        self.datasets_cnf_fp = (
+            str(paths.INSTRUMENT_CONFIGS_DIR / f"{datasets_cnf}.yaml")
+            if custom_datasets_cnf_fp is None
+            else str(custom_datasets_cnf_fp)
         )
 
     @staticmethod
@@ -50,8 +57,8 @@ class Trainer:
         return (X_train, X_val, X_test, y_train, y_val, y_test)
 
     def run(self):
-        ml_config = utils.load_yaml(fp=self.ml_config_fp)
-        instrument_config = utils.load_yaml(fp=self.instrument_config_fp)
+        ml_config = utils.load_yaml(fp=self.learners_cnf_fp)
+        instrument_config = utils.load_yaml(fp=self.datasets_cnf_fp)
 
         mlflow.set_experiment(self.experiment_name)
 

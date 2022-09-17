@@ -6,22 +6,16 @@ runs:
           - rf
           - xgboost
           - extra_tree
-        time_budget: 60
-        ensemble: false
-        early_stop: true
-      - estimator_list:
-          - lgbm
-          - rf
-          - xgboost
-          - extra_tree
           - xgb_limitdepth
           - catboost
-        time_budget: 120
+        time_budget: 180
         ensemble: false
         early_stop: true
   - model: tpot
     settings:
-      - generations: 3
-        population_size: 200
-      - generations: 6
+      - generations: 5
+        population_size: 10
+      - generations: 5
         population_size: 100
+      - generations: 10
+        population_size: 50

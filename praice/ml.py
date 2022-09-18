@@ -11,6 +11,8 @@ import tpot
 class IEstimator(ABC):
     """Base Interface for AutoML classes."""
 
+    __valid_params = []
+
     @abstractmethod
     def fit(
         self,
@@ -34,6 +36,12 @@ class IEstimator(ABC):
         Args:
             X_test (Union[np.array, pd.DataFrame]): Test data in shape (n, m).
         """
+        pass
+
+    @property
+    @abstractmethod
+    def valid_params(self):
+        """Valid IEstimator parameters."""
         pass
 
 
@@ -75,6 +83,16 @@ class FlamlEstimator(IEstimator):
                 f"Expected 'task' to be 'regression' or 'classification', but got '{task}'."
             )
         self.__task__ = task
+        self.__valid_params = list(self.estimator.get_params().keys())
+
+    @property
+    def valid_params(self):
+        """Valid parameters for a FlamlEstimator.
+
+        Returns:
+            list: parameters names.
+        """
+        return self.__valid_params
 
     def fit(
         self,
@@ -174,6 +192,16 @@ class TpotEstimator(IEstimator):
                 f"Expected 'task' to be 'regression' or 'classification', but got '{task}'."
             )
         self.__task__ = task
+        self.__valid_params = list(self.estimator.get_params().keys())
+
+    @property
+    def valid_params(self):
+        """Valid parameters for a TpotEstimator.
+
+        Returns:
+            list: parameters names.
+        """
+        return self.__valid_params
 
     def fit(
         self,
@@ -258,6 +286,16 @@ class MljarEstimator(IEstimator):
                 f"Expected 'task' to be 'regression' or 'classification', but got '{task}'."
             )
         self.__task__ = task
+        self.__valid_params = list(self.estimator.get_params().keys())
+
+    @property
+    def valid_params(self):
+        """Valid parameters for a MljarEstimator.
+
+        Returns:
+            list: parameters names.
+        """
+        return self.__valid_params
 
     def fit(
         self,

@@ -14,18 +14,21 @@
 # ---
 
 # +
-import sys
-from pathlib import Path
+# import sys
+# from pathlib import Path
 
-ROOT_DIR = Path(".").resolve().parent
-sys.path.append(str(ROOT_DIR))
-# -
+# ROOT_DIR = Path(".").resolve().parent
+# sys.path.append(str(ROOT_DIR))
 
+# +
 import praice
 from praice import Trainer
 
+print(praice.__version__)
+# -
+
 trainer = Trainer(
-    ticker="PYPL",
+    ticker="AMZN",
     learners_cnf="default_ml_config",
     datasets_cnf="default_instrument_config",
 )

@@ -9,7 +9,70 @@ from . import ml
 
 
 def validate_instruments_config(config: dict):
-    pass
+    """Validate instruments yaml config file.
+
+    Args:
+        config (dict): Loaded yaml.
+
+    Raises:
+        AssertionError: If something is wrong in config file.
+
+    Returns:
+        bool: Returns True if the config file is in proper format.
+    """
+    assert (
+        "data" in config.keys()
+    ), "Instruments config file should contain a 'data' key."
+    forecast_periods = []
+    for o in config["data"]:
+        assert (
+            "period" in o.keys()
+        ), "Each data item should contain 'period' key."
+        assert (
+            "add_ta_indicators" in o.keys()
+        ), "Each data item should contain 'add_ta_indicators' key."
+        assert (
+            "ta_indicators_config_fn" in o.keys()
+        ), "Each data item should contain 'ta_indicators_config_fn' key."
+        assert (
+            "add_date_features" in o.keys()
+        ), "Each data item should contain 'add_date_features' key."
+        assert (
+            "lookback_period" in o.keys()
+        ), "Each data item should contain 'lookback_period' key."
+        assert (
+            "add_past_close_prices" in o.keys()
+        ), "Each data item should contain 'add_past_close_prices' key."
+        assert (
+            "add_past_pct_changes" in o.keys()
+        ), "Each data item should contain 'add_past_pct_changes' key."
+        assert (
+            "forecast_period" in o.keys()
+        ), "Each data item should contain 'forecast_period' key."
+        assert (
+            "train_size" in o.keys()
+        ), "Each data item should contain 'train_size' key."
+        assert (
+            "val_size" in o.keys()
+        ), "Each data item should contain 'val_size' key."
+        assert (
+            "test_size" in o.keys()
+        ), "Each data item should contain 'test_size' key."
+        assert (
+            "separate_y" in o.keys()
+        ), "Each data item should contain 'separate_y' key."
+        assert (
+            "dropna" in o.keys()
+        ), "Each data item should contain 'dropna' key."
+        assert (
+            "environment" in o.keys()
+        ), "Each data item should contain 'environment' key."
+        forecast_periods.append(o["forecast_period"])
+
+    assert (
+        len(set(forecast_periods)) == 1
+    ), "You can not have different values of 'forecast_period' in one instrument config file."
+    return True
 
 
 def validate_learners_config(config: dict):

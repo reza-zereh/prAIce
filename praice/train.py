@@ -57,8 +57,12 @@ class Trainer:
         return (X_train, X_val, X_test, y_train, y_val, y_test)
 
     def run(self):
-        ml_config = utils.load_yaml(fp=self.learners_cnf_fp)
-        instrument_config = utils.load_yaml(fp=self.datasets_cnf_fp)
+        ml_config = utils.load_yaml(
+            fp=self.learners_cnf_fp, validate=True, config_type="learners"
+        )
+        instrument_config = utils.load_yaml(
+            fp=self.datasets_cnf_fp, validate=True, config_type="instruments"
+        )
 
         mlflow.set_experiment(self.experiment_name)
 

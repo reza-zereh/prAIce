@@ -354,6 +354,13 @@ class MljarEstimator(IEstimator):
         return self.estimator.predict(X_test)
 
 
+ESTIMATORS = {
+    "flaml": FlamlEstimator,
+    "tpot": TpotEstimator,
+    "mljar": MljarEstimator,
+}
+
+
 def learner(model: str, task: str = "regression") -> IEstimator:
     """Create a new learner.
 
@@ -364,13 +371,8 @@ def learner(model: str, task: str = "regression") -> IEstimator:
     Returns:
         IEstimator: A concrete instance of one of valid IEstimator classes.
     """
-    estimators = {
-        "flaml": FlamlEstimator,
-        "tpot": TpotEstimator,
-        "mljar": MljarEstimator,
-    }
     assert (
-        model in estimators
-    ), f"Expected 'model' to be one of {list(estimators.keys())}, but got '{model}'."
+        model in ESTIMATORS
+    ), f"Expected 'model' to be one of {list(ESTIMATORS.keys())}, but got '{model}'."
 
-    return estimators[model](task=task)
+    return ESTIMATORS[model](task=task)

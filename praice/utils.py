@@ -13,6 +13,17 @@ def validate_instruments_config(config: dict):
 
 
 def validate_learners_config(config: dict):
+    """Validate learners yaml config file.
+
+    Args:
+        config (dict): Loaded yaml.
+
+    Raises:
+        AssertionError: If something is wrong in config file.
+
+    Returns:
+        bool: Returns True if the config file is in proper format.
+    """
     assert (
         "learners" in config.keys()
     ), "learners config should contain 'learners' key."
@@ -27,9 +38,10 @@ def validate_learners_config(config: dict):
         ), "Each item below 'learners' should contain a 'settings' key."
         for setting in model["settings"]:
             assert set(setting.keys()).issubset(estimator_.valid_params), (
-                f"Provided settings ({list(setting.keys())}) is not a subset of {model['model']}"
+                f"Provided settings ({list(setting.keys())}) is not a subset of {model['model']} "
                 f"valid parameters ({estimator_.valid_params})"
             )
+    return True
 
 
 def validate_ta_indicators_config(config: dict):
@@ -50,6 +62,10 @@ def load_yaml(
 
     Args:
         fp (Union[str, PosixPath]): File path to yaml file.
+        validate (bool, optional): If True, validate config file to make sure it
+            has the correct format. Defaults to False.
+        config_type (str, optional): Type of yaml config file. Valid config types:
+            instruments, learners, ta_indicators. Defaults to None.
 
     Raises:
         FileNotFoundError: If file path is incorrect.
@@ -64,10 +80,9 @@ def load_yaml(
 
     if validate:
         assert (
-            config_type is not None
-            or config_type not in CONFIG_VALIDATORS.keys()
+            config_type is not None and config_type in CONFIG_VALIDATORS.keys()
         ), f"'config_type' should be one of {list(CONFIG_VALIDATORS.keys())} when 'validate' is True"
-        CONFIG_VALIDATORS[config_type]()
+        CONFIG_VALIDATORS[config_type](config=config)
 
     return config
 

@@ -108,14 +108,19 @@ def validate_learners_config(config: dict):
 
 
 def validate_ta_indicators_config(config: dict):
-    pass
+    """Validate ta_indicators yaml config file.
 
+    Args:
+        config (dict): Loaded yaml.
 
-CONFIG_VALIDATORS = {
-    "instruments": validate_instruments_config,
-    "learners": validate_learners_config,
-    "ta_indicators": validate_ta_indicators_config,
-}
+    Raises:
+        AssertionError: If something is wrong in config file.
+
+    Returns:
+        bool: Returns True if the config file is in proper format.
+    """
+    # TODO: validate ta_indicators config file
+    return True
 
 
 def load_yaml(
@@ -142,6 +147,11 @@ def load_yaml(
         config = yaml.safe_load(f)
 
     if validate:
+        CONFIG_VALIDATORS = {
+            "instruments": validate_instruments_config,
+            "learners": validate_learners_config,
+            "ta_indicators": validate_ta_indicators_config,
+        }
         assert (
             config_type is not None and config_type in CONFIG_VALIDATORS.keys()
         ), f"'config_type' should be one of {list(CONFIG_VALIDATORS.keys())} when 'validate' is True"

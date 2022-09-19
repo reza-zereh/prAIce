@@ -3,12 +3,17 @@ import time
 from pathlib import PosixPath
 from typing import Tuple, Union
 
+import matplotlib.pyplot as plt
 import mlflow
+import numpy as np
 import pandas as pd
 from sklearn import metrics
 
 from . import ml, paths, utils
 from .tickers import Instrument
+
+
+plt.style.use("ggplot")
 
 
 class Trainer:
@@ -112,6 +117,59 @@ class Trainer:
         fit_time = str(utils.format_time(seconds=t2 - t1))
         return (estimator, fit_time)
 
+    @staticmethod
+    def __log_mlflow_metrics(
+        experiment_id: str,
+        run_id: str,
+        y_true: Union[np.array, pd.DataFrame],
+        y_pred: Union[np.array, pd.DataFrame],
+        task: str = "regression",
+    ):
+        """Compute and log metrics of an mlflow run.
+
+        Args:
+            experiment_id (str): mlflow experiment id.
+            run_id (str): mlflow run id.
+            y_true (Union[np.array, pd.DataFrame]): Ground truth labels.
+            y_pred (Union[np.array, pd.DataFrame]): Predicted labels.
+            task (str, optional): ML problem. Valid tasks: classification, regression. Defaults to "regression".
+        """
+        with mlflow.start_run(
+            run_id=run_id, experiment_id=experiment_id, nested=True
+        ):
+            if task == "regression":
+                mlflow.log_metric(
+                    "rmse",
+                    metrics.mean_squared_error(y_true, y_pred, squared=False),
+                )
+                mlflow.log_metric(
+                    "mae",
+                    metrics.mean_absolute_error(y_true, y_pred),
+                )
+                mlflow.log_metric(
+                    "r2",
+                    metrics.r2_score(y_true, y_pred),
+                )
+                mlflow.log_metric(
+                    "mape",
+                    metrics.mean_absolute_percentage_error(y_true, y_pred),
+                )
+            elif task == "classification":
+                mlflow.log_metric(
+                    "accuracy",
+                    metrics.accuracy_score(y_true, y_pred),
+                )
+                mlflow.log_metric(
+                    "f1_micro",
+                    metrics.f1_score(y_true, y_pred, average="micro"),
+                )
+                mlflow.log_metric(
+                    "avg_precision_macro",
+                    metrics.average_precision_score(
+                        y_true, y_pred, average="macro"
+                    ),
+                )
+
     def run(self):
         ml_config = utils.load_yaml(
             fp=self.learners_cnf_fp, validate=True, config_type="learners"
@@ -156,40 +214,16 @@ class Trainer:
 
                         mlflow.set_tag("ticker", self.ticker)
                         mlflow.set_tag("estimator", estimator.__model__)
-                        mlflow.set_tag("fit time", fit_time)
-                        mlflow.set_tag("train set count", len(y_train))
+                        mlflow.set_tag("fit_time", fit_time)
+                        mlflow.set_tag("train_size", len(y_train))
+                        mlflow.set_tag("val_size", len(y_val))
                         mlflow.log_params(dict(**data_params, **ml_params))
                         y_pred = estimator.predict(X_val)
 
-                        if estimator.__task__ == "regression":
-                            mlflow.log_metric(
-                                "rmse",
-                                metrics.mean_squared_error(
-                                    y_val, y_pred, squared=False
-                                ),
-                            )
-                            mlflow.log_metric(
-                                "mae",
-                                metrics.mean_absolute_error(y_val, y_pred),
-                            )
-                            mlflow.log_metric(
-                                "r2",
-                                metrics.r2_score(y_val, y_pred),
-                            )
-                        elif estimator.__task__ == "classification":
-                            mlflow.log_metric(
-                                "accuracy",
-                                metrics.accuracy_score(y_val, y_pred),
-                            )
-                            mlflow.log_metric(
-                                "f1_micro",
-                                metrics.f1_score(
-                                    y_val, y_pred, average="micro"
-                                ),
-                            )
-                            mlflow.log_metric(
-                                "avg_precision_macro",
-                                metrics.average_precision_score(
-                                    y_val, y_pred, average="macro"
-                                ),
-                            )
+                        self.__log_mlflow_metrics(
+                            experiment_id=exp.experiment_id,
+                            run_id=run_id,
+                            y_true=y_val,
+                            y_pred=y_pred,
+                            task=estimator.__task__,
+                        )

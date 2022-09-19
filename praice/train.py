@@ -1,9 +1,10 @@
 import datetime
 import time
 from pathlib import PosixPath
-from typing import Union
+from typing import Tuple, Union
 
 import mlflow
+import pandas as pd
 from sklearn import metrics
 
 from . import ml, paths, utils
@@ -48,7 +49,26 @@ class Trainer:
         )
 
     @staticmethod
-    def __get_instrument_datasets(ticker, data_params):
+    def __get_instrument_datasets(
+        ticker: str, data_params: dict
+    ) -> Tuple[
+        pd.DataFrame,
+        pd.DataFrame,
+        pd.DataFrame,
+        pd.DataFrame,
+        pd.DataFrame,
+        pd.DataFrame,
+    ]:
+        """Get train, validation, and test sets using given configs.
+
+        Args:
+            ticker (str): Ticker name.
+            data_params (dict): Data configurations.
+
+        Returns:
+            Tuple[ pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, ]:
+                X_train, X_val, X_test, y_train, y_val, y_test
+        """
         X_train, X_val, X_test, y_train, y_val, y_test = Instrument(
             ticker=ticker,
             period=data_params["period"],
@@ -66,6 +86,32 @@ class Trainer:
         )
         return (X_train, X_val, X_test, y_train, y_val, y_test)
 
+    @staticmethod
+    def __fit_estimator(
+        model: str,
+        X_train: pd.DataFrame,
+        y_train: pd.DataFrame,
+        settings: dict,
+    ) -> Tuple[ml.IEstimator, str]:
+        """Create and train a ml.learner
+
+        Args:
+            model (str): Model name.
+            X_train (pd.DataFrame): Training features.
+            y_train (pd.DataFrame): Training labels.
+            settings (dict): Model hyper-parameters.
+
+        Returns:
+            Tuple[IEstimator, str]: (fitted model, fit time)
+        """
+        estimator = ml.learner(model=model)
+        print(f"Training {estimator.__model__} estimator ...\n")
+        t1 = time.perf_counter()
+        estimator.fit(X_train=X_train, y_train=y_train, settings=settings)
+        t2 = time.perf_counter()
+        fit_time = str(utils.format_time(seconds=t2 - t1))
+        return (estimator, fit_time)
+
     def run(self):
         ml_config = utils.load_yaml(
             fp=self.learners_cnf_fp, validate=True, config_type="learners"
@@ -74,7 +120,7 @@ class Trainer:
             fp=self.datasets_cnf_fp, validate=True, config_type="instruments"
         )
 
-        mlflow.set_experiment(self.experiment_name)
+        exp = mlflow.set_experiment(self.experiment_name)
 
         for data_params in instrument_config["data"]:
             (
@@ -93,17 +139,21 @@ class Trainer:
                 y_val = y_train
 
             for learner in ml_config["learners"]:
-                estimator = ml.learner(learner["model"])
-                print(f"Training {estimator.__model__} estimator ...\n")
-
                 for ml_params in learner["settings"]:
-                    t1 = time.perf_counter()
-                    estimator.fit(
-                        X_train=X_train, y_train=y_train, settings=ml_params
+                    estimator, fit_time = self.__fit_estimator(
+                        model=learner["model"],
+                        X_train=X_train,
+                        y_train=y_train,
+                        settings=ml_params,
                     )
-                    t2 = time.perf_counter()
-                    fit_time = utils.format_time(seconds=t2 - t1)
-                    with mlflow.start_run(nested=True):
+                    with mlflow.start_run(
+                        experiment_id=exp.experiment_id
+                    ) as run:
+                        run_id = run.info.run_id
+
+                        print(f"\nExperiment id: {exp.experiment_id}")
+                        print(f"Run id: {run_id}\n")
+
                         mlflow.set_tag("ticker", self.ticker)
                         mlflow.set_tag("estimator", estimator.__model__)
                         mlflow.set_tag("fit time", fit_time)

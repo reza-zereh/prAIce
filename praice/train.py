@@ -20,6 +20,16 @@ class Trainer:
         custom_datasets_cnf_fp: Union[str, PosixPath] = None,
         experiment_name: str = None,
     ):
+        if learners_cnf is None and custom_learners_cnf_fp is None:
+            raise AssertionError(
+                "One of the 'learners_cnf' or 'custom_learners_cnf_fp' should be provided."
+            )
+
+        if datasets_cnf is None and custom_datasets_cnf_fp is None:
+            raise AssertionError(
+                "One of the 'datasets_cnf' or 'custom_datasets_cnf_fp' should be provided."
+            )
+
         self.ticker = ticker
         self.experiment_name = (
             experiment_name

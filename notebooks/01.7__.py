@@ -14,13 +14,6 @@
 # ---
 
 # +
-# import sys
-# from pathlib import Path
-
-# ROOT_DIR = Path(".").resolve().parent
-# sys.path.append(str(ROOT_DIR))
-
-# +
 import praice
 from praice import Trainer
 
@@ -28,7 +21,7 @@ print(praice.__version__)
 # -
 
 trainer = Trainer(
-    ticker="AMZN",
+    ticker="MSFT",
     learners_cnf="default_ml_config",
     datasets_cnf="default_instrument_config",
 )

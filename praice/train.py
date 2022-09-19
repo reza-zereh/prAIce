@@ -1,8 +1,9 @@
 import datetime
 import time
-from pathlib import PosixPath
+from pathlib import PosixPath, Path
 from typing import Tuple, Union
 
+import joblib
 import matplotlib.pyplot as plt
 import mlflow
 import numpy as np
@@ -170,6 +171,50 @@ class Trainer:
                     ),
                 )
 
+    @staticmethod
+    def __plot(y_true, y_pred, title: str = "", parent_dir: PosixPath = None):
+        y_df = pd.DataFrame(index=y_true.index)
+        y_df["actual"] = y_true.values
+        y_df["preds"] = y_pred
+        plt.plot(y_df["actual"], label="Actual")
+        plt.plot(y_df["preds"], label="Predicted")
+        plt.title(title)
+        plt.xticks(rotation=45)
+        plt.legend()
+        fn = f"{utils.unique_id()}.png"
+        fp = fn if parent_dir is None else parent_dir / f"{fn}"
+        plt.savefig(fp)
+        plt.close()
+        return fp
+
+    @classmethod
+    def __log_mlflow_artifacts(
+        cls,
+        experiment_id: str,
+        run_id: str,
+        estimator,
+        y_true,
+        y_pred,
+        plot_title: str = None,
+    ):
+        parent_dir = Path(".").resolve() / f"{utils.unique_id()}"
+        parent_dir.mkdir()
+        model_fp = parent_dir / f"{utils.unique_id()}.pkl"
+        # TODO: save/export tpot model
+        # if estimator.__model__ == "tpot":
+        #     estimator = estimator.fitted_pipeline_
+        joblib.dump(estimator, model_fp)
+        cls.__plot(
+            y_true=y_true,
+            y_pred=y_pred,
+            title=plot_title,
+            parent_dir=parent_dir,
+        )
+        with mlflow.start_run(
+            run_id=run_id, experiment_id=experiment_id, nested=True
+        ):
+            mlflow.log_artifacts(parent_dir)
+
     def run(self):
         ml_config = utils.load_yaml(
             fp=self.learners_cnf_fp, validate=True, config_type="learners"
@@ -198,32 +243,40 @@ class Trainer:
 
             for learner in ml_config["learners"]:
                 for ml_params in learner["settings"]:
+                    # fit and predict
                     estimator, fit_time = self.__fit_estimator(
                         model=learner["model"],
                         X_train=X_train,
                         y_train=y_train,
                         settings=ml_params,
                     )
+                    y_pred = estimator.predict(X_val)
+                    # experiment tracking
                     with mlflow.start_run(
                         experiment_id=exp.experiment_id
                     ) as run:
                         run_id = run.info.run_id
-
-                        print(f"\nExperiment id: {exp.experiment_id}")
-                        print(f"Run id: {run_id}\n")
-
+                        # set experiment tags
                         mlflow.set_tag("ticker", self.ticker)
                         mlflow.set_tag("estimator", estimator.__model__)
                         mlflow.set_tag("fit_time", fit_time)
                         mlflow.set_tag("train_size", len(y_train))
                         mlflow.set_tag("val_size", len(y_val))
+                        # log parameters and metrics
                         mlflow.log_params(dict(**data_params, **ml_params))
-                        y_pred = estimator.predict(X_val)
-
                         self.__log_mlflow_metrics(
                             experiment_id=exp.experiment_id,
                             run_id=run_id,
                             y_true=y_val,
                             y_pred=y_pred,
                             task=estimator.__task__,
+                        )
+                        # save experiment artifacts
+                        self.__log_mlflow_artifacts(
+                            experiment_id=exp.experiment_id,
+                            run_id=run_id,
+                            estimator=estimator,
+                            y_true=y_val,
+                            y_pred=y_pred,
+                            plot_title=self.ticker,
                         )

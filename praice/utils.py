@@ -2,6 +2,7 @@ import datetime
 import os
 from pathlib import PosixPath
 from typing import List, Union
+import uuid
 
 import yaml
 
@@ -170,3 +171,12 @@ def format_time(seconds: Union[int, float]):
         str: Time in hh:mm:ss format.
     """
     return str(datetime.timedelta(seconds=int(seconds)))
+
+
+def unique_id():
+    """Generate a random unique ID.
+
+    Returns:
+        str: Unique ID
+    """
+    return uuid.uuid4().hex

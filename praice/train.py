@@ -1,6 +1,7 @@
 import datetime
+import shutil
 import time
-from pathlib import PosixPath, Path
+from pathlib import Path, PosixPath
 from typing import Tuple, Union
 
 import joblib
@@ -12,7 +13,6 @@ from sklearn import metrics
 
 from . import ml, paths, utils
 from .tickers import Instrument
-
 
 plt.style.use("ggplot")
 
@@ -172,7 +172,13 @@ class Trainer:
                 )
 
     @staticmethod
-    def __plot(y_true, y_pred, title: str = "", parent_dir: PosixPath = None):
+    def __plot(
+        y_true,
+        y_pred,
+        title: str = "",
+        parent_dir: PosixPath = None,
+        filename: str = None,
+    ):
         y_df = pd.DataFrame(index=y_true.index)
         y_df["actual"] = y_true.values
         y_df["preds"] = y_pred
@@ -181,7 +187,11 @@ class Trainer:
         plt.title(title)
         plt.xticks(rotation=45)
         plt.legend()
-        fn = f"{utils.unique_id()}.png"
+        fn = (
+            f"{utils.unique_id()}.png"
+            if filename is None
+            else f"{filename}.png"
+        )
         fp = fn if parent_dir is None else parent_dir / f"{fn}"
         plt.savefig(fp)
         plt.close()
@@ -196,24 +206,26 @@ class Trainer:
         y_true,
         y_pred,
         plot_title: str = None,
+        model_filename: str = "model",
+        plot_filename: str = "val_plot",
     ):
         parent_dir = Path(".").resolve() / f"{utils.unique_id()}"
         parent_dir.mkdir()
-        model_fp = parent_dir / f"{utils.unique_id()}.pkl"
-        # TODO: save/export tpot model
-        # if estimator.__model__ == "tpot":
-        #     estimator = estimator.fitted_pipeline_
+        model_fp = parent_dir / f"{model_filename}.pkl"
         joblib.dump(estimator, model_fp)
         cls.__plot(
             y_true=y_true,
             y_pred=y_pred,
             title=plot_title,
             parent_dir=parent_dir,
+            filename=plot_filename,
         )
         with mlflow.start_run(
             run_id=run_id, experiment_id=experiment_id, nested=True
         ):
             mlflow.log_artifacts(parent_dir)
+
+        shutil.rmtree(parent_dir)
 
     def run(self):
         ml_config = utils.load_yaml(

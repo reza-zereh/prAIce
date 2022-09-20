@@ -242,6 +242,8 @@ class TpotEstimator(IEstimator):
         if settings is not None and type(settings) == dict:
             self.estimator.set_params(**settings)
         self.estimator.fit(X_train, y_train)
+        if hasattr(self.estimator, "fitted_pipeline_"):
+            self.estimator = self.estimator.fitted_pipeline_
 
     def predict(self, X_test: Union[np.array, pd.DataFrame]):
         """Predict label from features.

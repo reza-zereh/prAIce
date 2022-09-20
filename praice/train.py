@@ -208,6 +208,8 @@ class Trainer:
         plot_title: str = None,
         model_filename: str = "model",
         plot_filename: str = "val_plot",
+        test_set: pd.DataFrame = None,
+        test_filename: str = "test",
     ):
         parent_dir = Path(".").resolve() / f"{utils.unique_id()}"
         ml.save_estimator(
@@ -220,6 +222,8 @@ class Trainer:
             parent_dir=parent_dir,
             filename=plot_filename,
         )
+        if test_set is not None and len(test_set) > 0:
+            test_set.to_csv(parent_dir / f"{test_filename}.csv", index=True)
         with mlflow.start_run(
             run_id=run_id, experiment_id=experiment_id, nested=True
         ):
@@ -236,7 +240,6 @@ class Trainer:
         )
 
         exp = mlflow.set_experiment(self.experiment_name)
-
         for data_params in instrument_config["data"]:
             (
                 X_train,
@@ -263,6 +266,12 @@ class Trainer:
                         settings=ml_params,
                     )
                     y_pred = estimator.predict(X_val)
+                    if len(X_test) > 0:
+                        test_set = X_test.copy()
+                        test_set["prediction"] = estimator.predict(X_test)
+                        test_set["forecast_period"] = data_params[
+                            "forecast_period"
+                        ]
                     # experiment tracking
                     with mlflow.start_run(
                         experiment_id=exp.experiment_id
@@ -292,4 +301,5 @@ class Trainer:
                                 y_true=y_val,
                                 y_pred=y_pred,
                                 plot_title=self.ticker,
+                                test_set=test_set,
                             )

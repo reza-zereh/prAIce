@@ -1,16 +1,21 @@
 from abc import ABC, abstractmethod
+from pathlib import Path, PosixPath
 from typing import Union
 
 import flaml
+import joblib
 import numpy as np
 import pandas as pd
 import supervised.automl as mljar
 import tpot
 
+from . import utils
+
 
 class IEstimator(ABC):
     """Base Interface for AutoML classes."""
 
+    __model__ = ""
     __valid_params = []
 
     @abstractmethod
@@ -242,8 +247,6 @@ class TpotEstimator(IEstimator):
         if settings is not None and type(settings) == dict:
             self.estimator.set_params(**settings)
         self.estimator.fit(X_train, y_train)
-        if hasattr(self.estimator, "fitted_pipeline_"):
-            self.estimator = self.estimator.fitted_pipeline_
 
     def predict(self, X_test: Union[np.array, pd.DataFrame]):
         """Predict label from features.
@@ -378,3 +381,26 @@ def learner(model: str, task: str = "regression") -> IEstimator:
     ), f"Expected 'model' to be one of {list(ESTIMATORS.keys())}, but got '{model}'."
 
     return ESTIMATORS[model](task=task)
+
+
+def save_estimator(
+    estimator: IEstimator,
+    parent_dir: Union[str, PosixPath] = None,
+    filename: str = None,
+) -> str:
+    parent_dir = "." if parent_dir is None else parent_dir
+    parent_dir = Path(parent_dir).resolve()
+    parent_dir.mkdir(parents=True, exist_ok=True)
+    filename = (
+        f"{utils.unique_id()}.pkl" if filename is None else f"{filename}.pkl"
+    )
+    fp = parent_dir / filename
+
+    if estimator.__model__ == "tpot":
+        if hasattr(estimator.estimator, "fitted_pipeline_"):
+            model = estimator.estimator.fitted_pipeline_
+    else:
+        model = estimator.estimator
+
+    saved_path = joblib.dump(model, fp)[0]
+    return saved_path

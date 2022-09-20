@@ -202,17 +202,17 @@ class Trainer:
         cls,
         experiment_id: str,
         run_id: str,
-        estimator,
-        y_true,
-        y_pred,
+        estimator: ml.IEstimator,
+        y_true: Union[np.array, pd.DataFrame],
+        y_pred: Union[np.array, pd.DataFrame],
         plot_title: str = None,
         model_filename: str = "model",
         plot_filename: str = "val_plot",
     ):
         parent_dir = Path(".").resolve() / f"{utils.unique_id()}"
-        parent_dir.mkdir()
-        model_fp = parent_dir / f"{model_filename}.pkl"
-        joblib.dump(estimator, model_fp)
+        ml.save_estimator(
+            estimator=estimator, parent_dir=parent_dir, filename=model_filename
+        )
         cls.__plot(
             y_true=y_true,
             y_pred=y_pred,
@@ -227,7 +227,7 @@ class Trainer:
 
         shutil.rmtree(parent_dir)
 
-    def run(self):
+    def run(self, save_artifacts: bool = True):
         ml_config = utils.load_yaml(
             fp=self.learners_cnf_fp, validate=True, config_type="learners"
         )
@@ -284,11 +284,12 @@ class Trainer:
                             task=estimator.__task__,
                         )
                         # save experiment artifacts
-                        self.__log_mlflow_artifacts(
-                            experiment_id=exp.experiment_id,
-                            run_id=run_id,
-                            estimator=estimator,
-                            y_true=y_val,
-                            y_pred=y_pred,
-                            plot_title=self.ticker,
-                        )
+                        if save_artifacts:
+                            self.__log_mlflow_artifacts(
+                                experiment_id=exp.experiment_id,
+                                run_id=run_id,
+                                estimator=estimator,
+                                y_true=y_val,
+                                y_pred=y_pred,
+                                plot_title=self.ticker,
+                            )

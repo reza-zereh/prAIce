@@ -1,15 +1,22 @@
 from abc import ABC, abstractmethod
+from pathlib import Path, PosixPath
 from typing import Union
 
 import flaml
+import joblib
 import numpy as np
 import pandas as pd
 import supervised.automl as mljar
 import tpot
 
+from . import utils
+
 
 class IEstimator(ABC):
     """Base Interface for AutoML classes."""
+
+    __model__ = ""
+    __valid_params = []
 
     @abstractmethod
     def fit(
@@ -34,6 +41,12 @@ class IEstimator(ABC):
         Args:
             X_test (Union[np.array, pd.DataFrame]): Test data in shape (n, m).
         """
+        pass
+
+    @property
+    @abstractmethod
+    def valid_params(self):
+        """Valid IEstimator parameters."""
         pass
 
 
@@ -75,6 +88,16 @@ class FlamlEstimator(IEstimator):
                 f"Expected 'task' to be 'regression' or 'classification', but got '{task}'."
             )
         self.__task__ = task
+        self.__valid_params = list(self.estimator.get_params().keys())
+
+    @property
+    def valid_params(self):
+        """Valid parameters for a FlamlEstimator.
+
+        Returns:
+            list: parameters names.
+        """
+        return self.__valid_params
 
     def fit(
         self,
@@ -174,6 +197,16 @@ class TpotEstimator(IEstimator):
                 f"Expected 'task' to be 'regression' or 'classification', but got '{task}'."
             )
         self.__task__ = task
+        self.__valid_params = list(self.estimator.get_params().keys())
+
+    @property
+    def valid_params(self):
+        """Valid parameters for a TpotEstimator.
+
+        Returns:
+            list: parameters names.
+        """
+        return self.__valid_params
 
     def fit(
         self,
@@ -258,6 +291,16 @@ class MljarEstimator(IEstimator):
                 f"Expected 'task' to be 'regression' or 'classification', but got '{task}'."
             )
         self.__task__ = task
+        self.__valid_params = list(self.estimator.get_params().keys())
+
+    @property
+    def valid_params(self):
+        """Valid parameters for a MljarEstimator.
+
+        Returns:
+            list: parameters names.
+        """
+        return self.__valid_params
 
     def fit(
         self,
@@ -316,6 +359,13 @@ class MljarEstimator(IEstimator):
         return self.estimator.predict(X_test)
 
 
+ESTIMATORS = {
+    "flaml": FlamlEstimator,
+    "tpot": TpotEstimator,
+    "mljar": MljarEstimator,
+}
+
+
 def learner(model: str, task: str = "regression") -> IEstimator:
     """Create a new learner.
 
@@ -326,13 +376,31 @@ def learner(model: str, task: str = "regression") -> IEstimator:
     Returns:
         IEstimator: A concrete instance of one of valid IEstimator classes.
     """
-    estimators = {
-        "flaml": FlamlEstimator,
-        "tpot": TpotEstimator,
-        "mljar": MljarEstimator,
-    }
     assert (
-        model in estimators
-    ), f"Expected 'model' to be one of {list(estimators.keys())}, but got '{model}'."
+        model in ESTIMATORS
+    ), f"Expected 'model' to be one of {list(ESTIMATORS.keys())}, but got '{model}'."
 
-    return estimators[model](task=task)
+    return ESTIMATORS[model](task=task)
+
+
+def save_estimator(
+    estimator: IEstimator,
+    parent_dir: Union[str, PosixPath] = None,
+    filename: str = None,
+) -> str:
+    parent_dir = "." if parent_dir is None else parent_dir
+    parent_dir = Path(parent_dir).resolve()
+    parent_dir.mkdir(parents=True, exist_ok=True)
+    filename = (
+        f"{utils.unique_id()}.pkl" if filename is None else f"{filename}.pkl"
+    )
+    fp = parent_dir / filename
+
+    if estimator.__model__ == "tpot":
+        if hasattr(estimator.estimator, "fitted_pipeline_"):
+            model = estimator.estimator.fitted_pipeline_
+    else:
+        model = estimator.estimator
+
+    saved_path = joblib.dump(model, fp)[0]
+    return saved_path

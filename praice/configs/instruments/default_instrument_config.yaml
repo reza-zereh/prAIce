@@ -12,7 +12,7 @@ data:
     test_size: 0.0
     separate_y: true
     dropna: true
-    environment: research
+    environment: prod
   - period: 3y
     add_ta_indicators: true
     ta_indicators_config_fn: ema1
@@ -26,7 +26,7 @@ data:
     test_size: 0.0
     separate_y: true
     dropna: true
-    environment: research
+    environment: prod
   - period: 4y
     add_ta_indicators: false
     ta_indicators_config_fn: ""
@@ -40,4 +40,4 @@ data:
     test_size: 0.0
     separate_y: true
     dropna: true
-    environment: research
+    environment: prod

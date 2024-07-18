@@ -1,6 +1,0 @@
-[core]
-    remote = gdrive
-['remote "gdrive"']
-    url = gdrive://1nluVw4ac5olCbB2U6W5kpUWqqXjOpY95
-['remote "origin"']
-    url = https://dagshub.com/ironcladgeek/prAIce.dvc

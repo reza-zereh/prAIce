@@ -7,30 +7,22 @@ repos:
         args: ["--maxkb=5120"] # 5 MB
       - id: no-commit-to-branch
         args: [--branch, main]
-  - repo: https://github.com/psf/black
-    rev: 22.6.0
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.5.2
     hooks:
-      - id: black
-  - repo: https://gitlab.com/pycqa/flake8
-    rev: 5.0.4
-    hooks:
-      - id: flake8
-        exclude: ^notebooks/
-  - repo: https://github.com/timothycrosley/isort
-    rev: 5.10.1
-    hooks:
-      - id: isort
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
   - repo: https://github.com/econchick/interrogate
-    rev: 1.5.0
+    rev: 1.7.0
     hooks:
       - id: interrogate
         exclude: ^notebooks/|^tests/
         args: [-v, -i, --fail-under=80]
   - repo: https://github.com/mwouts/jupytext
-    rev: v1.14.1
+    rev: v1.16.3
     hooks:
       - id: jupytext
         args: [--from, ipynb, --to, "py:light", --sync, --pipe, black]
         additional_dependencies:
-          - black==22.6.0
-
+          - black==24.4.2

@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from enum import Enum
 
 from peewee import (
     AutoField,
@@ -35,18 +36,33 @@ class BaseModel(Model):
         database = db
 
 
+class AssetClass(Enum):
+    """Enum class representing different asset classes."""
+
+    STOCK = "stock"
+    COMMODITY = "commodity"
+    CURRENCY = "currency"
+    CRYPTO = "crypto"
+    ETF = "etf"
+    INDEX = "index"
+    BOND = "bond"
+    MUTUAL_FUND = "mutual_fund"
+    FUTURES = "futures"
+    OPTION = "option"
+
+
 class Symbol(BaseModel):
     """
     Represents a symbol in the system.
 
     Attributes:
         id (int): The unique identifier of the symbol.
-        symbol (str): The symbol string.
+        symbol (str): The symbol string (uppercase).
         name (str): The name of the symbol.
-        asset_class (str): The asset class of the symbol (e.g., 'stock', 'commodity', 'currency', etc.).
-        sector (str, optional): The sector of the symbol.
-        industry (str, optional): The industry of the symbol.
-        exchange (str, optional): The exchange of the symbol.
+        asset_class (str): The asset class of the symbol (lowercase).
+        sector (str, optional): The sector of the symbol (title).
+        industry (str, optional): The industry of the symbol (title).
+        exchange (str, optional): The exchange of the symbol (uppercase).
         is_active (bool): Indicates if the symbol is active.
         created_at (datetime): The date and time when the symbol was created.
         updated_at (datetime): The date and time when the symbol was last updated.
@@ -56,8 +72,8 @@ class Symbol(BaseModel):
     symbol = CharField(max_length=10, unique=True, index=True)
     name = CharField(max_length=255)
     asset_class = CharField(
-        max_length=50
-    )  # e.g., 'stock', 'commodity', 'currency', etc.
+        max_length=50, choices=[(e.value, e.name) for e in AssetClass]
+    )
     sector = CharField(max_length=100, null=True)
     industry = CharField(max_length=100, null=True)
     exchange = CharField(max_length=50, null=True)
@@ -72,14 +88,59 @@ class Symbol(BaseModel):
         """
         Save the symbol instance.
 
-        This method updates the `updated_at` attribute of the symbol instance with the current datetime in UTC.
-        It then calls the `save` method of the parent class to save the symbol instance.
+        Returns:
+            The saved symbol instance.
+        Raises:
+            ValueError: If the asset_class is invalid.
+        """
+
+        self.updated_at = datetime.now(UTC)
+        self.symbol = self.symbol.upper()
+        if self.exchange:
+            self.exchange = self.exchange.upper()
+        if self.sector:
+            self.sector = self.sector.title()
+        if self.industry:
+            self.industry = self.industry.title()
+        self.asset_class = self.asset_class.lower()
+
+        if self.asset_class not in [e.value for e in AssetClass]:
+            raise ValueError(
+                f"Invalid asset_class: {self.asset_class}. "
+                f"Must be one of {[e.value for e in AssetClass]}"
+            )
+
+        return super(Symbol, self).save(*args, **kwargs)
+
+    @classmethod
+    def create(cls, **query):
+        """
+        Create a new symbol instance.
+
+        This method applies the necessary transformations before creating the instance.
+
+        Args:
+            **query: The attributes for creating the new symbol.
 
         Returns:
-            The result of calling the `save` method of the parent class.
+            The newly created Symbol instance.
         """
-        self.updated_at = datetime.now(UTC)
-        return super(Symbol, self).save(*args, **kwargs)
+        if "symbol" in query:
+            query["symbol"] = query["symbol"].upper()
+        if "exchange" in query and query["exchange"]:
+            query["exchange"] = query["exchange"].upper()
+        if "sector" in query and query["sector"]:
+            query["sector"] = query["sector"].title()
+        if "industry" in query and query["industry"]:
+            query["industry"] = query["industry"].title()
+        if "asset_class" in query:
+            query["asset_class"] = query["asset_class"].lower()
+            if query["asset_class"] not in [e.value for e in AssetClass]:
+                raise ValueError(
+                    f"Invalid asset_class: {query['asset_class']}. "
+                    f"Must be one of {[e.value for e in AssetClass]}"
+                )
+        return super(Symbol, cls).create(**query)
 
 
 class News(BaseModel):

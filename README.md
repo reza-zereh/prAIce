@@ -18,7 +18,7 @@ pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/
 
 ### Dependencies
 
-prAIce uses [ta-lib](https://github.com/mrjbq7/ta-lib) for doing technical alaysis. 
-In order to this library work properly, you need to have the 
+prAIce uses [ta-lib](https://github.com/mrjbq7/ta-lib) for doing technical alaysis.
+In order to this library work properly, you need to have the
 [TA-Lib](http://ta-lib.org/hdr_dw.html) already installed. Some
 suggestions for different platforms are included [here](https://github.com/mrjbq7/ta-lib#dependencies).

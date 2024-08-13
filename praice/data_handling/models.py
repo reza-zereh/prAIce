@@ -5,8 +5,10 @@ from peewee import (
     BooleanField,
     CharField,
     DateTimeField,
+    ForeignKeyField,
     Model,
     PostgresqlDatabase,
+    TextField,
 )
 
 from praice.config import settings
@@ -75,10 +77,92 @@ class Symbol(BaseModel):
 
         Returns:
             The result of calling the `save` method of the parent class.
-
         """
         self.updated_at = datetime.now(UTC)
         return super(Symbol, self).save(*args, **kwargs)
+
+
+class News(BaseModel):
+    """
+    Represents a news article.
+
+    Attributes:
+        id (int): The unique identifier of the news article.
+        url (str): The URL of the news article.
+        title (str): The title of the news article.
+        content (str): The content of the news article.
+        source (str): The source of the news article.
+        published_at (datetime): The date and time when the news article was published.
+        scraped_at (datetime): The date and time when the news article was scraped.
+    """
+
+    id = AutoField(primary_key=True)
+    url = CharField(max_length=512, unique=True)
+    title = CharField(max_length=255)
+    content = TextField(null=True)
+    source = CharField(max_length=100)
+    published_at = DateTimeField(null=True)
+    scraped_at = DateTimeField(default=lambda: datetime.now(UTC))
+
+    class Meta:
+        table_name = "news"
+
+
+class NewsSymbol(BaseModel):
+    """
+    Represents a mapping between a news article and a symbol.
+
+    Attributes:
+        news (ForeignKeyField): The foreign key to the News model, representing the news article.
+        symbol (ForeignKeyField): The foreign key to the Symbol model, representing the symbol.
+    """
+
+    news = ForeignKeyField(News, backref="news_symbols", on_delete="CASCADE")
+    symbol = ForeignKeyField(Symbol, backref="news_symbols", on_delete="CASCADE")
+
+    class Meta:
+        table_name = "news_symbols"
+        indexes = ((("news", "symbol"), True),)
+
+
+class ScrapingUrl(BaseModel):
+    """
+    Represents a scraping URL.
+
+    Attributes:
+        id (int): The ID of the scraping URL.
+        symbol (Symbol): The symbol associated with the scraping URL.
+        url (str): The URL to be scraped.
+        source (str): The source of the scraping URL.
+        is_active (bool): Indicates if the scraping URL is active.
+        created_at (datetime): The timestamp when the scraping URL was created.
+        updated_at (datetime): The timestamp when the scraping URL was last updated.
+        last_scraped_at (datetime): The timestamp when the scraping URL was last scraped.
+    """
+
+    ...
+    id = AutoField(primary_key=True)
+    symbol = ForeignKeyField(Symbol, backref="scraping_urls")
+    url = CharField(max_length=512, unique=True)
+    source = CharField(max_length=100)
+    is_active = BooleanField(default=True)
+    created_at = DateTimeField(default=lambda: datetime.now(UTC))
+    updated_at = DateTimeField(default=lambda: datetime.now(UTC))
+    last_scraped_at = DateTimeField(null=True)
+
+    class Meta:
+        table_name = "scraping_urls"
+        indexes = ((("symbol", "source"), True),)
+
+    def save(self, *args, **kwargs):
+        """
+        Save the object and update the 'updated_at' field with the current datetime in UTC.
+
+        Returns:
+            The saved object.
+        """
+        self.updated_at = datetime.now(UTC)
+        return super(ScrapingUrl, self).save(*args, **kwargs)
 
 
 def create_tables():
@@ -88,7 +172,7 @@ def create_tables():
     This function uses the `db` connection to create tables in the database. It takes no arguments.
     """
     with db:
-        db.create_tables([Symbol])
+        db.create_tables([Symbol, News, NewsSymbol, ScrapingUrl])
 
 
 if __name__ == "__main__":

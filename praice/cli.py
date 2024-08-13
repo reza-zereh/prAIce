@@ -89,7 +89,7 @@ def update_symbol(
 ):
     """Update an existing symbol in the database."""
     try:
-        sym = Symbol.get(Symbol.symbol == symbol)
+        sym = Symbol.get(Symbol.symbol == symbol.upper())
         if name:
             sym.name = name
         if asset_class:
@@ -112,7 +112,7 @@ def update_symbol(
 def delete_symbol(symbol: str = typer.Argument(..., help="Symbol to delete")):
     """Delete a symbol from the database."""
     try:
-        sym = Symbol.get(Symbol.symbol == symbol)
+        sym = Symbol.get(Symbol.symbol == symbol.upper())
         sym.delete_instance()
         rprint(f"[green]Symbol {symbol} deleted successfully.[/green]")
     except Symbol.DoesNotExist:
@@ -131,7 +131,7 @@ def add_scraping_url(
     """Add a new scraping URL for a symbol."""
     try:
         with db.atomic():
-            symbol_obj = Symbol.get(Symbol.symbol == symbol)
+            symbol_obj = Symbol.get(Symbol.symbol == symbol.upper())
             _ = ScrapingUrl.create(symbol=symbol_obj, url=url, source=source)
         rprint(f"[green]Scraping URL for {symbol} added successfully.[/green]")
     except Symbol.DoesNotExist:
@@ -147,7 +147,7 @@ def list_scraping_urls(
     """List scraping URLs, optionally filtered by symbol."""
     query = ScrapingUrl.select(ScrapingUrl, Symbol).join(Symbol)
     if symbol:
-        query = query.where(Symbol.symbol == symbol)
+        query = query.where(Symbol.symbol == symbol.upper())
 
     table = Table(title="Scraping URLs")
     table.add_column("ID", style="cyan")

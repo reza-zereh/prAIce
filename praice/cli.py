@@ -7,9 +7,15 @@ from rich.table import Table
 from praice.data_handling.models import ScrapingUrl, Symbol, db
 
 app = typer.Typer()
+symbol_app = typer.Typer()
+scraping_url_app = typer.Typer()
+
+app.add_typer(symbol_app, name="symbol")
+app.add_typer(scraping_url_app, name="scraping-url")
 
 
-@app.command()
+# Symbol commands
+@symbol_app.command("add")
 def add_symbol(
     symbol: str = typer.Option(..., prompt=True),
     name: str = typer.Option(..., prompt=True),
@@ -47,7 +53,7 @@ def add_symbol(
         rprint(f"[red]Error adding symbol: {str(e)}[/red]")
 
 
-@app.command()
+@symbol_app.command("list")
 def list_symbols():
     """List all symbols in the database."""
     symbols = Symbol.select()
@@ -72,7 +78,7 @@ def list_symbols():
     rprint(table)
 
 
-@app.command()
+@symbol_app.command("update")
 def update_symbol(
     symbol: str = typer.Argument(..., help="Symbol to update"),
     name: Optional[str] = typer.Option(None),
@@ -102,7 +108,7 @@ def update_symbol(
         rprint(f"[red]Error updating symbol: {str(e)}[/red]")
 
 
-@app.command()
+@symbol_app.command("delete")
 def delete_symbol(symbol: str = typer.Argument(..., help="Symbol to delete")):
     """Delete a symbol from the database."""
     try:
@@ -115,7 +121,8 @@ def delete_symbol(symbol: str = typer.Argument(..., help="Symbol to delete")):
         rprint(f"[red]Error deleting symbol: {str(e)}[/red]")
 
 
-@app.command()
+# Scraping URL commands
+@scraping_url_app.command("add")
 def add_scraping_url(
     symbol: str = typer.Option(..., prompt=True),
     url: str = typer.Option(..., prompt=True),
@@ -133,7 +140,7 @@ def add_scraping_url(
         rprint(f"[red]Error adding scraping URL: {str(e)}[/red]")
 
 
-@app.command()
+@scraping_url_app.command("list")
 def list_scraping_urls(
     symbol: Optional[str] = typer.Option(None, help="Filter by symbol"),
 ):
@@ -163,7 +170,7 @@ def list_scraping_urls(
     rprint(table)
 
 
-@app.command()
+@scraping_url_app.command("update")
 def update_scraping_url(
     id: int = typer.Argument(..., help="ID of the scraping URL to update"),
     url: Optional[str] = typer.Option(None),
@@ -187,7 +194,7 @@ def update_scraping_url(
         rprint(f"[red]Error updating scraping URL: {str(e)}[/red]")
 
 
-@app.command()
+@scraping_url_app.command("delete")
 def delete_scraping_url(
     id: int = typer.Argument(..., help="ID of the scraping URL to delete"),
 ):

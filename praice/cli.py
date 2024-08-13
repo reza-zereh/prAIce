@@ -4,7 +4,7 @@ import typer
 from rich import print as rprint
 from rich.table import Table
 
-from praice.data_handling.models import Symbol, db
+from praice.data_handling.models import ScrapingUrl, Symbol, db
 
 app = typer.Typer()
 
@@ -113,6 +113,93 @@ def delete_symbol(symbol: str = typer.Argument(..., help="Symbol to delete")):
         rprint(f"[red]Symbol {symbol} not found.[/red]")
     except Exception as e:
         rprint(f"[red]Error deleting symbol: {str(e)}[/red]")
+
+
+@app.command()
+def add_scraping_url(
+    symbol: str = typer.Option(..., prompt=True),
+    url: str = typer.Option(..., prompt=True),
+    source: str = typer.Option(..., prompt=True),
+):
+    """Add a new scraping URL for a symbol."""
+    try:
+        with db.atomic():
+            symbol_obj = Symbol.get(Symbol.symbol == symbol)
+            _ = ScrapingUrl.create(symbol=symbol_obj, url=url, source=source)
+        rprint(f"[green]Scraping URL for {symbol} added successfully.[/green]")
+    except Symbol.DoesNotExist:
+        rprint(f"[red]Symbol {symbol} not found.[/red]")
+    except Exception as e:
+        rprint(f"[red]Error adding scraping URL: {str(e)}[/red]")
+
+
+@app.command()
+def list_scraping_urls(
+    symbol: Optional[str] = typer.Option(None, help="Filter by symbol"),
+):
+    """List scraping URLs, optionally filtered by symbol."""
+    query = ScrapingUrl.select(ScrapingUrl, Symbol).join(Symbol)
+    if symbol:
+        query = query.where(Symbol.symbol == symbol)
+
+    table = Table(title="Scraping URLs")
+    table.add_column("ID", style="cyan")
+    table.add_column("Symbol", style="magenta")
+    table.add_column("URL", style="green")
+    table.add_column("Source", style="yellow")
+    table.add_column("Is Active", style="blue")
+    table.add_column("Last Scraped", style="red")
+
+    for url in query:
+        table.add_row(
+            str(url.id),
+            url.symbol.symbol,
+            url.url,
+            url.source,
+            str(url.is_active),
+            str(url.last_scraped_at) if url.last_scraped_at else "Never",
+        )
+
+    rprint(table)
+
+
+@app.command()
+def update_scraping_url(
+    id: int = typer.Argument(..., help="ID of the scraping URL to update"),
+    url: Optional[str] = typer.Option(None),
+    source: Optional[str] = typer.Option(None),
+    is_active: Optional[bool] = typer.Option(None),
+):
+    """Update an existing scraping URL."""
+    try:
+        scraping_url = ScrapingUrl.get_by_id(id)
+        if url:
+            scraping_url.url = url
+        if source:
+            scraping_url.source = source
+        if is_active is not None:
+            scraping_url.is_active = is_active
+        scraping_url.save()
+        rprint(f"[green]Scraping URL (ID: {id}) updated successfully.[/green]")
+    except ScrapingUrl.DoesNotExist:
+        rprint(f"[red]Scraping URL with ID {id} not found.[/red]")
+    except Exception as e:
+        rprint(f"[red]Error updating scraping URL: {str(e)}[/red]")
+
+
+@app.command()
+def delete_scraping_url(
+    id: int = typer.Argument(..., help="ID of the scraping URL to delete"),
+):
+    """Delete a scraping URL."""
+    try:
+        scraping_url = ScrapingUrl.get_by_id(id)
+        scraping_url.delete_instance()
+        rprint(f"[green]Scraping URL (ID: {id}) deleted successfully.[/green]")
+    except ScrapingUrl.DoesNotExist:
+        rprint(f"[red]Scraping URL with ID {id} not found.[/red]")
+    except Exception as e:
+        rprint(f"[red]Error deleting scraping URL: {str(e)}[/red]")
 
 
 if __name__ == "__main__":

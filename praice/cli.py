@@ -4,7 +4,17 @@ import typer
 from rich import print as rprint
 from rich.table import Table
 
-from praice.data_handling.models import ScrapingUrl, Symbol, db
+from praice.data_handling.crud import (
+    add_scraping_url,
+    add_symbol,
+    delete_scraping_url,
+    delete_symbol,
+    list_scraping_urls,
+    list_symbols,
+    update_scraping_url,
+    update_symbol,
+)
+from praice.data_handling.models import db
 
 app = typer.Typer()
 symbol_app = typer.Typer()
@@ -16,7 +26,7 @@ app.add_typer(scraping_url_app, name="scraping-url")
 
 # Symbol commands
 @symbol_app.command("add")
-def add_symbol(
+def cli_add_symbol(
     symbol: str = typer.Option(..., prompt=True),
     name: str = typer.Option(..., prompt=True),
     asset_class: str = typer.Option(..., prompt=True),
@@ -25,6 +35,7 @@ def add_symbol(
     exchange: Optional[str] = typer.Option(None),
 ):
     """Add a new symbol to the database."""
+
     # Prompt for optional fields only if not provided
     if sector is None:
         sector = typer.prompt("Sector", default="")
@@ -39,24 +50,16 @@ def add_symbol(
     exchange = exchange or None
 
     try:
-        with db.atomic():
-            new_symbol = Symbol.create(
-                symbol=symbol,
-                name=name,
-                asset_class=asset_class,
-                sector=sector,
-                industry=industry,
-                exchange=exchange,
-            )
+        new_symbol = add_symbol(symbol, name, asset_class, sector, industry, exchange)
         rprint(f"[green]Symbol {new_symbol.symbol} added successfully.[/green]")
     except Exception as e:
         rprint(f"[red]Error adding symbol: {str(e)}[/red]")
 
 
 @symbol_app.command("list")
-def list_symbols():
+def cli_list_symbols():
     """List all symbols in the database."""
-    symbols = Symbol.select()
+    symbols = list_symbols()
     table = Table(title="Symbols")
     table.add_column("Symbol", style="cyan")
     table.add_column("Name", style="magenta")
@@ -79,7 +82,7 @@ def list_symbols():
 
 
 @symbol_app.command("update")
-def update_symbol(
+def cli_update_symbol(
     symbol: str = typer.Argument(..., help="Symbol to update"),
     name: Optional[str] = typer.Option(None),
     asset_class: Optional[str] = typer.Option(None),
@@ -89,66 +92,47 @@ def update_symbol(
 ):
     """Update an existing symbol in the database."""
     try:
-        sym = Symbol.get(Symbol.symbol == symbol.upper())
-        if name:
-            sym.name = name
-        if asset_class:
-            sym.asset_class = asset_class
-        if sector is not None:
-            sym.sector = sector
-        if industry is not None:
-            sym.industry = industry
-        if exchange is not None:
-            sym.exchange = exchange
-        sym.save()
+        update_symbol(symbol, name, asset_class, sector, industry, exchange)
         rprint(f"[green]Symbol {symbol} updated successfully.[/green]")
-    except Symbol.DoesNotExist:
-        rprint(f"[red]Symbol {symbol} not found.[/red]")
     except Exception as e:
         rprint(f"[red]Error updating symbol: {str(e)}[/red]")
 
 
 @symbol_app.command("delete")
-def delete_symbol(symbol: str = typer.Argument(..., help="Symbol to delete")):
+def cli_delete_symbol(symbol: str = typer.Argument(..., help="Symbol to delete")):
     """Delete a symbol from the database."""
     try:
-        sym = Symbol.get(Symbol.symbol == symbol.upper())
-        sym.delete_instance()
-        rprint(f"[green]Symbol {symbol} deleted successfully.[/green]")
-    except Symbol.DoesNotExist:
-        rprint(f"[red]Symbol {symbol} not found.[/red]")
+        if delete_symbol(symbol):
+            rprint(f"[green]Symbol {symbol} deleted successfully.[/green]")
+        else:
+            rprint(f"[red]Symbol {symbol} not found.[/red]")
     except Exception as e:
         rprint(f"[red]Error deleting symbol: {str(e)}[/red]")
 
 
 # Scraping URL commands
 @scraping_url_app.command("add")
-def add_scraping_url(
+def cli_add_scraping_url(
     symbol: str = typer.Option(..., prompt=True),
     url: str = typer.Option(..., prompt=True),
     source: str = typer.Option(..., prompt=True),
 ):
     """Add a new scraping URL for a symbol."""
     try:
-        with db.atomic():
-            symbol_obj = Symbol.get(Symbol.symbol == symbol.upper())
-            _ = ScrapingUrl.create(symbol=symbol_obj, url=url, source=source)
-        rprint(f"[green]Scraping URL for {symbol} added successfully.[/green]")
-    except Symbol.DoesNotExist:
-        rprint(f"[red]Symbol {symbol} not found.[/red]")
+        new_url = add_scraping_url(symbol, url, source)
+        rprint(
+            f"[green]Scraping URL for {new_url.symbol.symbol} added successfully.[/green]"
+        )
     except Exception as e:
         rprint(f"[red]Error adding scraping URL: {str(e)}[/red]")
 
 
 @scraping_url_app.command("list")
-def list_scraping_urls(
+def cli_list_scraping_urls(
     symbol: Optional[str] = typer.Option(None, help="Filter by symbol"),
 ):
     """List scraping URLs, optionally filtered by symbol."""
-    query = ScrapingUrl.select(ScrapingUrl, Symbol).join(Symbol)
-    if symbol:
-        query = query.where(Symbol.symbol == symbol.upper())
-
+    urls = list_scraping_urls(symbol)
     table = Table(title="Scraping URLs")
     table.add_column("ID", style="cyan")
     table.add_column("Symbol", style="magenta")
@@ -157,7 +141,7 @@ def list_scraping_urls(
     table.add_column("Is Active", style="blue")
     table.add_column("Last Scraped", style="red")
 
-    for url in query:
+    for url in urls:
         table.add_row(
             str(url.id),
             url.symbol.symbol,
@@ -171,7 +155,7 @@ def list_scraping_urls(
 
 
 @scraping_url_app.command("update")
-def update_scraping_url(
+def cli_update_scraping_url(
     id: int = typer.Argument(..., help="ID of the scraping URL to update"),
     url: Optional[str] = typer.Option(None),
     source: Optional[str] = typer.Option(None),
@@ -179,32 +163,22 @@ def update_scraping_url(
 ):
     """Update an existing scraping URL."""
     try:
-        scraping_url = ScrapingUrl.get_by_id(id)
-        if url:
-            scraping_url.url = url
-        if source:
-            scraping_url.source = source
-        if is_active is not None:
-            scraping_url.is_active = is_active
-        scraping_url.save()
+        update_scraping_url(id, url, source, is_active)
         rprint(f"[green]Scraping URL (ID: {id}) updated successfully.[/green]")
-    except ScrapingUrl.DoesNotExist:
-        rprint(f"[red]Scraping URL with ID {id} not found.[/red]")
     except Exception as e:
         rprint(f"[red]Error updating scraping URL: {str(e)}[/red]")
 
 
 @scraping_url_app.command("delete")
-def delete_scraping_url(
+def cli_delete_scraping_url(
     id: int = typer.Argument(..., help="ID of the scraping URL to delete"),
 ):
     """Delete a scraping URL."""
     try:
-        scraping_url = ScrapingUrl.get_by_id(id)
-        scraping_url.delete_instance()
-        rprint(f"[green]Scraping URL (ID: {id}) deleted successfully.[/green]")
-    except ScrapingUrl.DoesNotExist:
-        rprint(f"[red]Scraping URL with ID {id} not found.[/red]")
+        if delete_scraping_url(id):
+            rprint(f"[green]Scraping URL (ID: {id}) deleted successfully.[/green]")
+        else:
+            rprint(f"[red]Scraping URL with ID {id} not found.[/red]")
     except Exception as e:
         rprint(f"[red]Error deleting scraping URL: {str(e)}[/red]")
 

@@ -96,6 +96,8 @@ class Symbol(BaseModel):
 
         self.updated_at = datetime.now(UTC)
         self.symbol = self.symbol.upper()
+        if self.name:
+            self.name = self.name.title()
         if self.exchange:
             self.exchange = self.exchange.upper()
         if self.sector:
@@ -127,6 +129,8 @@ class Symbol(BaseModel):
         """
         if "symbol" in query:
             query["symbol"] = query["symbol"].upper()
+        if "name" in query and query["name"]:
+            query["name"] = query["name"].title()
         if "exchange" in query and query["exchange"]:
             query["exchange"] = query["exchange"].upper()
         if "sector" in query and query["sector"]:

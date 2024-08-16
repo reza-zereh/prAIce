@@ -130,12 +130,10 @@ def get_asset_class(info: Dict[str, any]) -> str:
         quote_type = info["quoteType"].lower()
         if quote_type == "equity":
             return "stock"
-        elif quote_type in ["etf", "mutualfund"]:
-            return quote_type
-        elif quote_type == "currency":
-            return "forex"
-        elif quote_type in ["future", "commodity"]:
+        elif quote_type == "future":
             return "futures"
+        elif quote_type in ["etf", "mutualfund", "currency", "commodity"]:
+            return quote_type
 
     # Default to 'stock' if we can't determine the asset class
     return "stock"

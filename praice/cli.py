@@ -4,6 +4,10 @@ import typer
 from rich import print as rprint
 from rich.table import Table
 
+from praice.data_handling.collectors.news_collector import (
+    collect_news_articles,
+    collect_news_headlines,
+)
 from praice.data_handling.crud import (
     add_scraping_url,
     add_symbol,
@@ -19,9 +23,11 @@ from praice.data_handling.models import db
 app = typer.Typer()
 symbol_app = typer.Typer()
 scraping_url_app = typer.Typer()
+news_app = typer.Typer()
 
 app.add_typer(symbol_app, name="symbol")
 app.add_typer(scraping_url_app, name="scraping-url")
+app.add_typer(news_app, name="news")
 
 
 # Symbol commands
@@ -181,6 +187,50 @@ def cli_delete_scraping_url(
             rprint(f"[red]Scraping URL with ID {id} not found.[/red]")
     except Exception as e:
         rprint(f"[red]Error deleting scraping URL: {str(e)}[/red]")
+
+
+# News commands
+@news_app.command("collect-headlines")
+def cli_collect_news_headlines(
+    symbol: str = typer.Argument(..., help="Symbol to collect news for"),
+    source: str = typer.Argument(..., help="Source to collect news from"),
+    use_proxy: bool = typer.Option(False, "--proxy", help="Use a proxy server"),
+):
+    """Collect news headlines for a given symbol and source."""
+    proxy = None
+    if use_proxy:
+        # TODO: You might want to load these from environment variables or a config file
+        proxy = {
+            "http": "http://your-proxy-server:port",
+            "https": "https://your-proxy-server:port",
+        }
+
+    try:
+        with db.atomic():
+            collect_news_headlines(symbol, source, proxy)
+    except Exception as e:
+        rprint(f"[red]Error collecting news headlines: {str(e)}[/red]")
+
+
+@news_app.command("collect-articles")
+def cli_collect_news_articles(
+    use_proxy: bool = typer.Option(False, "--proxy", help="Use a proxy server"),
+):
+    """Collect full content for news articles with null content."""
+    proxy = None
+    if use_proxy:
+        # TODO: You might want to load these from environment variables or a config file
+        proxy = {
+            "http": "http://your-proxy-server:port",
+            "https": "https://your-proxy-server:port",
+        }
+
+    try:
+        with db.atomic():
+            collect_news_articles(proxy)
+    except Exception as e:
+        # logger.error(f"Error during full article collection: {str(e)}")
+        rprint(f"[red]Error during full article collection: {str(e)}[/red]")
 
 
 if __name__ == "__main__":

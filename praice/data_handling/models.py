@@ -46,7 +46,7 @@ class AssetClass(Enum):
     ETF = "etf"
     INDEX = "index"
     BOND = "bond"
-    MUTUAL_FUND = "mutual_fund"
+    MUTUALFUND = "mutualfund"
     FUTURES = "futures"
     OPTION = "option"
 

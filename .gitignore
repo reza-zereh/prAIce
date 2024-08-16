@@ -136,3 +136,4 @@ dmypy.json
 catboost*/
 AutoML*/
 mlruns/
+data/

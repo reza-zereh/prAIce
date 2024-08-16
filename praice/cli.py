@@ -19,6 +19,10 @@ from praice.data_handling.crud import (
     update_symbol,
 )
 from praice.data_handling.models import db
+from praice.utils import logging
+
+# Set up logging
+logging.setup_logging()
 
 app = typer.Typer()
 symbol_app = typer.Typer()

@@ -4,15 +4,15 @@ from typing import Dict, List, Optional
 from loguru import logger
 from peewee import DoesNotExist
 
-from praice.data_handling.crud import (
+from praice.data_handling.db_ops.crud import (
     create_news_symbol,
     get_or_create_news,
 )
-from praice.data_handling.helpers.news import get_news_with_null_content
-from praice.data_handling.helpers.scraping_url import (
+from praice.data_handling.db_ops.news_helpers import get_news_with_null_content
+from praice.data_handling.db_ops.scraping_url_helpers import (
     get_scraping_url_by_symbol_and_source,
 )
-from praice.data_handling.helpers.symbol import get_or_create_symbol
+from praice.data_handling.db_ops.symbol_helpers import get_or_create_symbol
 from praice.data_handling.models import db
 from praice.data_handling.scrapers.scraper_factory import ScraperFactory
 

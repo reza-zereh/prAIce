@@ -3,7 +3,7 @@ from typing import Dict
 import yfinance as yf
 from loguru import logger
 
-from praice.data_handling.crud import add_symbol
+from praice.data_handling.db_ops.crud import add_symbol
 from praice.data_handling.models import Symbol
 
 

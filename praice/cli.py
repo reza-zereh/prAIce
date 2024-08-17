@@ -8,7 +8,7 @@ from praice.data_handling.collectors.news_collector import (
     collect_news_articles,
     collect_news_headlines,
 )
-from praice.data_handling.crud import (
+from praice.data_handling.db_ops.crud import (
     add_scraping_url,
     add_symbol,
     delete_scraping_url,

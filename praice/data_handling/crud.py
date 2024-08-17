@@ -1,9 +1,26 @@
-from typing import Dict, List, Optional
+from datetime import UTC, datetime
+from typing import Dict, List, Optional, Tuple
 
-import yfinance as yf
-from loguru import logger
+from praice.data_handling.models import News, NewsSymbol, ScrapingUrl, Symbol, db
 
-from praice.data_handling.models import ScrapingUrl, Symbol, db
+
+# ############################
+# Symbol CRUD operations
+# ############################
+def get_symbol(symbol: str) -> Symbol:
+    """
+    Retrieves a Symbol object based on the given symbol.
+
+    Parameters:
+        symbol (str): The symbol to search for.
+
+    Returns:
+        Symbol: The Symbol object matching the given symbol.
+
+    Raises:
+        DoesNotExist: If no Symbol object is found for the given
+    """
+    return Symbol.get(Symbol.symbol == symbol.upper())
 
 
 def add_symbol(
@@ -61,61 +78,6 @@ def delete_symbol(symbol: str) -> bool:
     return bool(sym.delete_instance())
 
 
-def get_or_create_symbol(symbol: str) -> Symbol:
-    """
-    Get an existing symbol from the database or create a new one with info from Yahoo Finance.
-
-    Args:
-        symbol (str): The stock symbol to get or create.
-
-    Returns:
-        Symbol: The Symbol object from the database.
-    """
-    symbol = symbol.upper()
-
-    try:
-        return Symbol.get(Symbol.symbol == symbol)
-    except Symbol.DoesNotExist:
-        logger.info(
-            f"Symbol {symbol} not found in database. Fetching info from Yahoo Finance."
-        )
-        return create_symbol_from_yahoo(symbol)
-
-
-def create_symbol_from_yahoo(symbol: str) -> Symbol:
-    """
-    Create a new Symbol object with information fetched from Yahoo Finance.
-
-    Args:
-        symbol (str): The stock symbol to create.
-
-    Returns:
-        Symbol: The newly created Symbol object.
-
-    Raises:
-        ValueError: If unable to fetch the required information from Yahoo Finance.
-    """
-    ticker = yf.Ticker(symbol)
-    info = ticker.info
-
-    if not info:
-        raise ValueError(
-            f"Unable to fetch information for symbol {symbol} from Yahoo Finance."
-        )
-
-    new_symbol = add_symbol(
-        symbol=symbol,
-        name=info.get("longName", info.get("shortName", "Unknown")),
-        asset_class=get_asset_class(info),
-        sector=info.get("sector"),
-        industry=info.get("industry"),
-        exchange=info.get("exchange"),
-    )
-
-    logger.info(f"Created new symbol: {new_symbol.symbol}")
-    return new_symbol
-
-
 def get_asset_class(info: Dict[str, any]) -> str:
     """
     Determine the asset class based on the information from Yahoo Finance.
@@ -139,6 +101,9 @@ def get_asset_class(info: Dict[str, any]) -> str:
     return "stock"
 
 
+# ############################
+# ScrapingUrl CRUD operations
+# ############################
 def add_scraping_url(symbol: str, url: str, source: str) -> ScrapingUrl:
     """Add a new scraping URL for a symbol."""
     with db.atomic():
@@ -176,3 +141,152 @@ def delete_scraping_url(id: int) -> bool:
     """Delete a scraping URL."""
     scraping_url = ScrapingUrl.get_by_id(id)
     return bool(scraping_url.delete_instance())
+
+
+# ############################
+# News CRUD operations
+# ############################
+def create_news(
+    title: str,
+    url: str,
+    source: str,
+    content: Optional[str] = None,
+    published_at: Optional[datetime] = None,
+) -> News:
+    """
+    Create a news object with the given parameters.
+
+    Args:
+        title (str): The title of the news.
+        url (str): The URL of the news.
+        source (str): The source of the news.
+        content (Optional[str], optional): The content of the news.
+            Defaults to None.
+        published_at (Optional[datetime], optional): The published date and
+            time of the news. Defaults to None.
+
+    Returns:
+        News: The created news object.
+    """
+    with db.atomic():
+        return News.create(
+            title=title,
+            url=url,
+            source=source,
+            content=content,
+            published_at=published_at,
+            scraped_at=datetime.now(UTC),
+        )
+
+
+def get_or_create_news(
+    title: str,
+    url: str,
+    source: str,
+    content: Optional[str] = None,
+    published_at: Optional[datetime] = None,
+    scraped_at: Optional[datetime] = None,
+) -> Tuple[News, bool]:
+    """
+    Get or create a news object.
+
+    Args:
+        title (str): The title of the news.
+        url (str): The URL of the news.
+        source (str): The source of the news.
+        content (Optional[str], optional): The content of the news.
+            Defaults to None.
+        published_at (Optional[datetime], optional): The published date and
+            time of the news. Defaults to None.
+        scraped_at (Optional[datetime], optional): The date and time the news was scraped.
+
+    Returns:
+        Tuple[News, bool]: A tuple containing the news object and a boolean
+            indicating if the news was created.
+    """
+    return News.get_or_create(
+        url=url,
+        defaults={
+            "title": title,
+            "source": source,
+            "content": content,
+            "published_at": published_at,
+            "scraped_at": scraped_at,
+        },
+    )
+
+
+def get_news(news_id: int) -> News:
+    """
+    Retrieve a news item by its ID.
+
+    Parameters:
+        news_id (int): The ID of the news item to retrieve.
+
+    Returns:
+        News: The news item with the specified ID.
+
+    Raises:
+        DoesNotExist: If no news item with the specified ID is found.
+    """
+    return News.get_by_id(news_id)
+
+
+def update_news(news_id: int, **kwargs) -> bool:
+    """
+    Update a news entry in the database.
+
+    Args:
+        news_id (int): The ID of the news entry to update.
+        **kwargs: Keyword arguments representing the fields to update.
+
+    Returns:
+        bool: True if the news entry was successfully updated, False otherwise.
+    """
+    query = News.update(**kwargs).where(News.id == news_id)
+    return query.execute() > 0
+
+
+def delete_news(news_id: int) -> bool:
+    """
+    Deletes a news item from the database.
+
+    Args:
+        news_id (int): The ID of the news item to be deleted.
+
+    Returns:
+        bool: True if the news item was successfully deleted, False otherwise.
+    """
+    query = News.delete().where(News.id == news_id)
+    return query.execute() > 0
+
+
+# ############################
+# NewsSymbol CRUD operations
+# ############################
+def create_news_symbol(news: News, symbol: Symbol) -> NewsSymbol:
+    """
+    Create a NewsSymbol object.
+
+    Args:
+        news (News): The news object.
+        symbol (Symbol): The symbol object.
+
+    Returns:
+        NewsSymbol: The created NewsSymbol object.
+    """
+    return NewsSymbol.create(news=news, symbol=symbol)
+
+
+def delete_news_symbol(news_symbol_id: int) -> bool:
+    """
+    Deletes a news symbol from the database.
+
+    Args:
+        news_symbol_id (int): The ID of the news symbol to be deleted.
+
+    Returns:
+        bool: True if the news symbol was deleted successfully, False otherwise.
+    """
+    query = NewsSymbol.delete().where(NewsSymbol.id == news_symbol_id)
+    return query.execute() > 0

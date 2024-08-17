@@ -1,4 +1,4 @@
-from praice.data_handling.crud import get_symbol
+from praice.data_handling.db_ops.crud import get_symbol
 from praice.data_handling.models import ScrapingUrl
 
 

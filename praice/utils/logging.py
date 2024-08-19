@@ -39,4 +39,26 @@ def setup_logging():
         level=settings.LOG_LEVEL,
     )
 
-    logger.info(f"Logging initialized with level: {settings.LOG_LEVEL}")
+
+def get_scheduler_logger():
+    """
+    Create and return a scheduler-specific logger.
+    """
+    # Create a scheduler-specific logger
+    scheduler_logger = logger.bind(name="scheduler")
+
+    # Add a file handler for scheduler logs
+    log_file = PATHS["logs"] / "scheduler.log"
+    scheduler_logger.add(
+        log_file,
+        rotation="10 MB",
+        retention="1 week",
+        compression="zip",
+        format=(
+            "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | "
+            "scheduler:{function}:{line} - {message}"
+        ),
+        level=settings.LOG_LEVEL,
+    )
+
+    return scheduler_logger

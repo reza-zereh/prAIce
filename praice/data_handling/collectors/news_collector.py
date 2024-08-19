@@ -10,6 +10,7 @@ from praice.data_handling.db_ops.crud import (
 )
 from praice.data_handling.db_ops.news_helpers import get_news_with_null_content
 from praice.data_handling.db_ops.scraping_url_helpers import (
+    get_active_scraping_urls_by_source,
     get_scraping_url_by_symbol_and_source,
 )
 from praice.data_handling.db_ops.symbol_helpers import get_or_create_symbol
@@ -107,3 +108,22 @@ def collect_news_articles(
         "Completed full article scraping. "
         f"{num_scraped} items scraped out of {len(news_to_scrape)}."
     )
+
+
+def collect_news_headlines_by_source(
+    source: str, proxy: Optional[Dict[str, str]] = None
+) -> None:
+    """
+    Collects news headlines by source.
+
+    Args:
+        source (str): The source of the news headlines.
+        proxy (Optional[Dict[str, str]], optional): A dictionary containing proxy information.
+            Defaults to None.
+
+    Returns:
+        None
+    """
+    scraping_urls = get_active_scraping_urls_by_source(source=source)
+    for url in scraping_urls:
+        collect_news_headlines(symbol=url.symbol.symbol, source=url.source, proxy=proxy)

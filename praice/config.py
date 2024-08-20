@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = Field("INFO", description="Logging level")
 
     model_config = SettingsConfigDict(
-        env_file=PATHS["app"] / ".env",
+        env_file=PATHS["root"] / ".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
     )

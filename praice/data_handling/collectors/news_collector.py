@@ -7,9 +7,11 @@ from peewee import DoesNotExist
 from praice.data_handling.db_ops.crud import (
     create_news_symbol,
     get_or_create_news,
+    update_news,
 )
 from praice.data_handling.db_ops.news_helpers import get_news_with_null_content
 from praice.data_handling.db_ops.scraping_url_helpers import (
+    get_active_scraping_urls_by_source,
     get_scraping_url_by_symbol_and_source,
 )
 from praice.data_handling.db_ops.symbol_helpers import get_or_create_symbol
@@ -75,21 +77,25 @@ def collect_news_articles(
     Returns:
         None
     """
-    logger.info("Starting full article scraping for items with null content")
+    news_to_scrape = get_news_with_null_content(limit=limit)
+    num_scraped = 0
 
-    with db.atomic():
-        news_to_scrape = get_news_with_null_content(limit=limit)
-        num_scraped = 0
+    logger.info(
+        f"Starting full article scraping for {len(news_to_scrape)} items with null content"
+    )
 
-        for news in news_to_scrape:
-            try:
-                scraper = ScraperFactory.get_scraper(source=news.source, proxy=proxy)
-                article_data = scraper.scrape_article(news.url)
+    for news in news_to_scrape:
+        try:
+            scraper = ScraperFactory.get_scraper(source=news.source, proxy=proxy)
+            article_data = scraper.scrape_article(news.url)
 
-                news.content = article_data["content"]
-                news.published_at = article_data["published_at"]
-                news.scraped_at = datetime.now(UTC)
-                news.save()
+            with db.atomic():
+                update_news(
+                    news.id,
+                    content=article_data["content"],
+                    published_at=article_data["published_at"],
+                    scraped_at=datetime.now(UTC),
+                )
                 num_scraped += 1
 
                 # Create NewsSymbol entries for each symbol mentioned in the article
@@ -100,10 +106,29 @@ def collect_news_articles(
                     except ValueError as e:
                         logger.error(f"Error creating symbol {symbol}: {str(e)}")
 
-            except Exception as e:
-                logger.error(f"Error scraping article {news.url}: {str(e)}")
+        except Exception as e:
+            logger.error(f"Error scraping article {news.url}: {str(e)}")
 
     logger.info(
         "Completed full article scraping. "
         f"{num_scraped} items scraped out of {len(news_to_scrape)}."
     )
+
+
+def collect_news_headlines_by_source(
+    source: str, proxy: Optional[Dict[str, str]] = None
+) -> None:
+    """
+    Collects news headlines by source.
+
+    Args:
+        source (str): The source of the news headlines.
+        proxy (Optional[Dict[str, str]], optional): A dictionary containing proxy information.
+            Defaults to None.
+
+    Returns:
+        None
+    """
+    scraping_urls = get_active_scraping_urls_by_source(source=source)
+    for url in scraping_urls:
+        collect_news_headlines(symbol=url.symbol.symbol, source=url.source, proxy=proxy)

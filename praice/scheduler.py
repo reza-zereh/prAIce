@@ -55,7 +55,7 @@ def collect_articles_job():
     """
     logger.info("Starting article collection job")
     try:
-        collect_news_articles()
+        collect_news_articles(limit=100)
         logger.info("Article collection job completed successfully")
     except Exception as e:
         logger.error(f"Error in article collection job: {str(e)}")

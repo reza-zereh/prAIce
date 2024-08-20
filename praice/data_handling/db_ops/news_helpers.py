@@ -115,3 +115,13 @@ def get_news_with_null_content(limit: int = 50) -> List[News]:
         List[News]: A list of news articles with null content.
     """
     return list(News.select().where(News.content.is_null()).limit(limit))
+
+
+def count_news_with_null_content() -> int:
+    """
+    Count the number of news articles with null content.
+
+    Returns:
+        int: The number of news articles with null content.
+    """
+    return News.select().where(News.content.is_null()).count()

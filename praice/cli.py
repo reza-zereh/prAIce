@@ -18,6 +18,7 @@ from praice.data_handling.db_ops.crud import (
     update_scraping_url,
     update_symbol,
 )
+from praice.data_handling.db_ops.news_helpers import count_news_with_null_content
 from praice.data_handling.models import db
 from praice.utils import logging
 
@@ -235,6 +236,13 @@ def cli_collect_news_articles(
     except Exception as e:
         # logger.error(f"Error during full article collection: {str(e)}")
         rprint(f"[red]Error during full article collection: {str(e)}[/red]")
+
+
+@news_app.command("count-null-content")
+def cli_count_news_with_null_content():
+    """Count the number of news articles with null content."""
+    count = count_news_with_null_content()
+    rprint(f"[cyan]Number of news articles with null content: {count}[/cyan]")
 
 
 if __name__ == "__main__":

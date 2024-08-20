@@ -7,6 +7,7 @@ from peewee import DoesNotExist
 from praice.data_handling.db_ops.crud import (
     create_news_symbol,
     get_or_create_news,
+    update_news,
 )
 from praice.data_handling.db_ops.news_helpers import get_news_with_null_content
 from praice.data_handling.db_ops.scraping_url_helpers import (
@@ -76,21 +77,25 @@ def collect_news_articles(
     Returns:
         None
     """
-    logger.info("Starting full article scraping for items with null content")
+    news_to_scrape = get_news_with_null_content(limit=limit)
+    num_scraped = 0
 
-    with db.atomic():
-        news_to_scrape = get_news_with_null_content(limit=limit)
-        num_scraped = 0
+    logger.info(
+        f"Starting full article scraping for {len(news_to_scrape)} items with null content"
+    )
 
-        for news in news_to_scrape:
-            try:
-                scraper = ScraperFactory.get_scraper(source=news.source, proxy=proxy)
-                article_data = scraper.scrape_article(news.url)
+    for news in news_to_scrape:
+        try:
+            scraper = ScraperFactory.get_scraper(source=news.source, proxy=proxy)
+            article_data = scraper.scrape_article(news.url)
 
-                news.content = article_data["content"]
-                news.published_at = article_data["published_at"]
-                news.scraped_at = datetime.now(UTC)
-                news.save()
+            with db.atomic():
+                update_news(
+                    news.id,
+                    content=article_data["content"],
+                    published_at=article_data["published_at"],
+                    scraped_at=datetime.now(UTC),
+                )
                 num_scraped += 1
 
                 # Create NewsSymbol entries for each symbol mentioned in the article
@@ -101,8 +106,8 @@ def collect_news_articles(
                     except ValueError as e:
                         logger.error(f"Error creating symbol {symbol}: {str(e)}")
 
-            except Exception as e:
-                logger.error(f"Error scraping article {news.url}: {str(e)}")
+        except Exception as e:
+            logger.error(f"Error scraping article {news.url}: {str(e)}")
 
     logger.info(
         "Completed full article scraping. "

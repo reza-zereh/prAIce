@@ -77,13 +77,15 @@ def init_scheduler():
     scheduler.add_job(
         collect_headlines_by_source_job,
         "interval",
-        hours=1,
+        minutes=80,
         id="collect_yfinance_headlines",
         kwargs={"source": "yfinance"},
     )
     logger.info("Added job: collect_yfinance_headlines")
 
-    scheduler.add_job(collect_articles_job, "interval", hours=2, id="collect_articles")
+    scheduler.add_job(
+        collect_articles_job, "interval", minutes=170, id="collect_articles"
+    )
     logger.info("Added job: collect_articles")
 
     # Start the scheduler

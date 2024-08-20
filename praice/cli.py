@@ -211,8 +211,7 @@ def cli_collect_news_headlines(
         }
 
     try:
-        with db.atomic():
-            collect_news_headlines(symbol, source, proxy)
+        collect_news_headlines(symbol=symbol, source=source, proxy=proxy)
     except Exception as e:
         rprint(f"[red]Error collecting news headlines: {str(e)}[/red]")
 
@@ -220,6 +219,9 @@ def cli_collect_news_headlines(
 @news_app.command("collect-articles")
 def cli_collect_news_articles(
     use_proxy: bool = typer.Option(False, "--proxy", help="Use a proxy server"),
+    limit: int = typer.Option(
+        50, "--limit", help="Limit the number of articles to scrape"
+    ),
 ):
     """Collect full content for news articles with null content."""
     proxy = None
@@ -231,8 +233,7 @@ def cli_collect_news_articles(
         }
 
     try:
-        with db.atomic():
-            collect_news_articles(proxy)
+        collect_news_articles(proxy=proxy, limit=limit)
     except Exception as e:
         # logger.error(f"Error during full article collection: {str(e)}")
         rprint(f"[red]Error during full article collection: {str(e)}[/red]")

@@ -1,0 +1,12 @@
+services:
+  scheduler:
+    build:
+      context: .
+      dockerfile: ./scheduler.Dockerfile
+    restart: unless-stopped
+    image: praice_scheduler
+    container_name: praice_scheduler_cnt
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs

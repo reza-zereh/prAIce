@@ -18,7 +18,10 @@ from praice.data_handling.db_ops.crud import (
     update_scraping_url,
     update_symbol,
 )
-from praice.data_handling.db_ops.news_helpers import count_news_with_null_content
+from praice.data_handling.db_ops.news_helpers import (
+    count_news_by_symbol,
+    count_news_with_null_content,
+)
 from praice.data_handling.models import db
 from praice.utils import logging
 
@@ -244,6 +247,23 @@ def cli_count_news_with_null_content():
     """Count the number of news articles with null content."""
     count = count_news_with_null_content()
     rprint(f"[cyan]Number of news articles with null content: {count}[/cyan]")
+
+
+@news_app.command("count-by-symbol")
+def cli_count_news_by_symbol(
+    n: int = typer.Option(-1, "-n", help="Number of symbols to return"),
+):
+    """Count the number of news articles for each symbol."""
+    counts = count_news_by_symbol(n)["news_count_by_symbol"]
+
+    table = Table(title="News Counts by Symbol")
+    table.add_column("Symbol", style="cyan")
+    table.add_column("Count", style="magenta")
+
+    for symbol, count in counts.items():
+        table.add_row(symbol, str(count))
+
+    rprint(table)
 
 
 if __name__ == "__main__":

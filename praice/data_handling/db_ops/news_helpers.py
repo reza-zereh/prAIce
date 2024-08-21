@@ -125,3 +125,32 @@ def count_news_with_null_content() -> int:
         int: The number of news articles with null content.
     """
     return News.select().where(News.content.is_null()).count()
+
+
+def count_news_by_symbol(n: int = -1) -> Dict[str, Dict[str, int]]:
+    """
+    Count the number of news articles for each symbol.
+
+    Args:
+        n (int, optional): The number of symbols to return.
+            Defaults to -1, which returns all symbols.
+
+    Returns:
+        A dictionary containing the count of news articles for each symbol.
+        The dictionary has the following structure:
+        {
+            "news_count_by_symbol": {
+                <symbol>: <count>,
+                ...
+    """
+    news_by_symbol = list(
+        News.select(Symbol.symbol, fn.COUNT(News.id).alias("count"))
+        .join(NewsSymbol)
+        .join(Symbol)
+        .group_by(Symbol.symbol)
+        .order_by(fn.COUNT(News.id).desc())
+        .dicts()
+    )
+    return {
+        "news_count_by_symbol": {o["symbol"]: o["count"] for o in news_by_symbol[:n]}
+    }

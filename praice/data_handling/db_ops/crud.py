@@ -1,7 +1,15 @@
-from datetime import UTC, datetime
-from typing import Dict, List, Optional, Tuple
+from datetime import UTC, date, datetime
+from typing import Dict, List, Optional, Tuple, Union
 
-from praice.data_handling.models import News, NewsSymbol, ScrapingUrl, Symbol, db
+from praice.data_handling.models import (
+    HistoricalPrice,
+    News,
+    NewsSymbol,
+    ScrapingUrl,
+    Symbol,
+    db,
+)
+from praice.utils import helpers
 
 
 # ############################
@@ -290,3 +298,180 @@ def delete_news_symbol(news_symbol_id: int) -> bool:
     """
     query = NewsSymbol.delete().where(NewsSymbol.id == news_symbol_id)
     return query.execute() > 0
+
+
+# ############################
+# HistoricalPrice CRUD operations
+# ############################
+
+
+def _ensure_symbol(symbol: Union[Symbol, str]) -> Symbol:
+    """
+    Ensure that we have a Symbol object.
+    If a string is provided, fetch the corresponding Symbol object.
+    """
+    if isinstance(symbol, str):
+        return get_symbol(symbol)
+    return symbol
+
+
+def create_historical_price(
+    symbol: Union[Symbol, str],
+    date: date,
+    open_price: float,
+    high: float,
+    low: float,
+    close: float,
+    volume: int,
+    dividends: float = 0.0,
+    stock_splits: float = 0.0,
+) -> HistoricalPrice:
+    """
+    Create a new historical price record.
+
+    Args:
+        symbol (Union[Symbol, str]): The Symbol object or symbol string.
+        date (date): The date of this price record.
+        open_price (float): The opening price.
+        high (float): The highest price of the day.
+        low (float): The lowest price of the day.
+        close (float): The closing price.
+        volume (int): The trading volume.
+        dividends (float, optional): The dividend amount. Defaults to 0.0.
+        stock_splits (float, optional): The stock split ratio. Defaults to 0.0.
+
+    Returns:
+        HistoricalPrice: The created HistoricalPrice object.
+    """
+    symbol_obj = _ensure_symbol(symbol)
+    return HistoricalPrice.create(
+        symbol=symbol_obj,
+        date=date,
+        open=open_price,
+        high=high,
+        low=low,
+        close=close,
+        volume=volume,
+        dividends=dividends,
+        stock_splits=stock_splits,
+    )
+
+
+def get_historical_price(symbol: Union[Symbol, str], date: date) -> HistoricalPrice:
+    """
+    Retrieve a specific historical price record.
+
+    Args:
+        symbol (Union[Symbol, str]): The Symbol object or symbol string.
+        date (date): The date of the price record.
+
+    Returns:
+        HistoricalPrice: The retrieved HistoricalPrice object.
+
+    Raises:
+        DoesNotExist: If no matching record is found.
+    """
+    symbol_obj = _ensure_symbol(symbol)
+    return HistoricalPrice.get(
+        (HistoricalPrice.symbol == symbol_obj) & (HistoricalPrice.date == date)
+    )
+
+
+def get_historical_prices(
+    symbol: Union[Symbol, str],
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+) -> List[HistoricalPrice]:
+    """
+    Retrieve historical price records for a symbol within a date range.
+
+    Args:
+        symbol (Union[Symbol, str]): The Symbol object or symbol string.
+        start_date (date, optional): The start date of the range (inclusive).
+        end_date (date, optional): The end date of the range (inclusive).
+
+    Returns:
+        List[HistoricalPrice]: A list of HistoricalPrice objects.
+    """
+    symbol_obj = _ensure_symbol(symbol)
+    query = HistoricalPrice.select().where(HistoricalPrice.symbol == symbol_obj)
+
+    if start_date:
+        query = query.where(HistoricalPrice.date >= start_date)
+    if end_date:
+        query = query.where(HistoricalPrice.date <= end_date)
+
+    return list(query.order_by(HistoricalPrice.date))
+
+
+def update_historical_price(symbol: Union[Symbol, str], date: date, **kwargs) -> bool:
+    """
+    Update a specific historical price record.
+
+    Args:
+        symbol (Union[Symbol, str]): The Symbol object or symbol string.
+        date (date): The date of the record to update.
+        **kwargs: The fields to update and their new values.
+
+    Returns:
+        bool: True if the update was successful, False otherwise.
+    """
+    symbol_obj = _ensure_symbol(symbol)
+    query = HistoricalPrice.update(**kwargs).where(
+        (HistoricalPrice.symbol == symbol_obj) & (HistoricalPrice.date == date)
+    )
+    return query.execute() > 0
+
+
+def delete_historical_price(symbol: Union[Symbol, str], date: date) -> bool:
+    """
+    Delete a specific historical price record.
+
+    Args:
+        symbol (Union[Symbol, str]): The Symbol object or symbol string.
+        date (date): The date of the record to delete.
+
+    Returns:
+        bool: True if the deletion was successful, False otherwise.
+    """
+    symbol_obj = _ensure_symbol(symbol)
+    query = HistoricalPrice.delete().where(
+        (HistoricalPrice.symbol == symbol_obj) & (HistoricalPrice.date == date)
+    )
+    return query.execute() > 0
+
+
+def bulk_upsert_historical_prices(
+    symbol: Union[Symbol, str], price_data: List[Dict]
+) -> int:
+    """
+    Bulk upsert (insert or update) historical price records for a symbol.
+
+    Args:
+        symbol (Union[Symbol, str]): The Symbol object or symbol string.
+        price_data (List[Dict]): A list of dictionaries containing price data.
+            Each dict should have keys: date, open, high, low, close, volume, dividends, stock_splits
+
+    Returns:
+        int: The number of records inserted or updated.
+    """
+    symbol_obj = _ensure_symbol(symbol)
+    with db.atomic():
+        for batch in helpers.chunked(price_data, 100):  # Process in batches of 100
+            HistoricalPrice.insert_many(
+                [{**data, "symbol": symbol_obj} for data in batch]
+            ).on_conflict(
+                conflict_target=[HistoricalPrice.symbol, HistoricalPrice.date],
+                preserve=[HistoricalPrice.symbol, HistoricalPrice.date],
+                update={
+                    HistoricalPrice.open: HistoricalPrice.open,
+                    HistoricalPrice.high: HistoricalPrice.high,
+                    HistoricalPrice.low: HistoricalPrice.low,
+                    HistoricalPrice.close: HistoricalPrice.close,
+                    HistoricalPrice.volume: HistoricalPrice.volume,
+                    HistoricalPrice.dividends: HistoricalPrice.dividends,
+                    HistoricalPrice.stock_splits: HistoricalPrice.stock_splits,
+                },
+            ).execute()
+
+    return len(price_data)

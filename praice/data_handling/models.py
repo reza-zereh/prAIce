@@ -6,6 +6,7 @@ from peewee import (
     BigIntegerField,
     BooleanField,
     CharField,
+    CompositeKey,
     DateField,
     DateTimeField,
     DecimalField,
@@ -233,8 +234,7 @@ class ScrapingUrl(BaseModel):
         return super(ScrapingUrl, self).save(*args, **kwargs)
 
 
-class HistoricalPrice(BaseModel):
-    id = AutoField(primary_key=True)
+class HistoricalPrice1D(BaseModel):
     symbol = ForeignKeyField(Symbol, backref="historical_prices")
     date = DateField()
     open = DecimalField(max_digits=10, decimal_places=2)
@@ -246,10 +246,8 @@ class HistoricalPrice(BaseModel):
     stock_splits = DecimalField(max_digits=10, decimal_places=2)
 
     class Meta:
-        table_name = "historical_prices"
-        indexes = (
-            (("symbol", "date"), True),  # Unique index
-        )
+        table_name = "historical_prices_1d"
+        primary_key = CompositeKey("symbol", "date")
 
 
 def create_tables():
@@ -259,7 +257,7 @@ def create_tables():
     This function uses the `db` connection to create tables in the database. It takes no arguments.
     """
     with db:
-        db.create_tables([Symbol, News, NewsSymbol, ScrapingUrl, HistoricalPrice])
+        db.create_tables([Symbol, News, NewsSymbol, ScrapingUrl, HistoricalPrice1D])
 
 
 if __name__ == "__main__":

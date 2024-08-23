@@ -1,8 +1,10 @@
 from datetime import UTC, date, datetime
 from typing import Dict, List, Optional, Tuple, Union
 
+from peewee import IntegrityError
+
 from praice.data_handling.models import (
-    HistoricalPrice,
+    HistoricalPrice1D,
     News,
     NewsSymbol,
     ScrapingUrl,
@@ -325,7 +327,7 @@ def create_historical_price(
     volume: int,
     dividends: float = 0.0,
     stock_splits: float = 0.0,
-) -> HistoricalPrice:
+) -> HistoricalPrice1D:
     """
     Create a new historical price record.
 
@@ -344,7 +346,7 @@ def create_historical_price(
         HistoricalPrice: The created HistoricalPrice object.
     """
     symbol_obj = _ensure_symbol(symbol)
-    return HistoricalPrice.create(
+    return HistoricalPrice1D.create(
         symbol=symbol_obj,
         date=date,
         open=open_price,
@@ -357,7 +359,7 @@ def create_historical_price(
     )
 
 
-def get_historical_price(symbol: Union[Symbol, str], date: date) -> HistoricalPrice:
+def get_historical_price(symbol: Union[Symbol, str], date: date) -> HistoricalPrice1D:
     """
     Retrieve a specific historical price record.
 
@@ -372,16 +374,14 @@ def get_historical_price(symbol: Union[Symbol, str], date: date) -> HistoricalPr
         DoesNotExist: If no matching record is found.
     """
     symbol_obj = _ensure_symbol(symbol)
-    return HistoricalPrice.get(
-        (HistoricalPrice.symbol == symbol_obj) & (HistoricalPrice.date == date)
+    return HistoricalPrice1D.get(
+        (HistoricalPrice1D.symbol == symbol_obj) & (HistoricalPrice1D.date == date)
     )
 
 
 def get_historical_prices(
-    symbol: Union[Symbol, str],
-    start_date: Optional[date] = None,
-    end_date: Optional[date] = None,
-) -> List[HistoricalPrice]:
+    symbol: Union[Symbol, str], start_date: date = None, end_date: date = None
+) -> List[HistoricalPrice1D]:
     """
     Retrieve historical price records for a symbol within a date range.
 
@@ -394,14 +394,14 @@ def get_historical_prices(
         List[HistoricalPrice]: A list of HistoricalPrice objects.
     """
     symbol_obj = _ensure_symbol(symbol)
-    query = HistoricalPrice.select().where(HistoricalPrice.symbol == symbol_obj)
+    query = HistoricalPrice1D.select().where(HistoricalPrice1D.symbol == symbol_obj)
 
     if start_date:
-        query = query.where(HistoricalPrice.date >= start_date)
+        query = query.where(HistoricalPrice1D.date >= start_date)
     if end_date:
-        query = query.where(HistoricalPrice.date <= end_date)
+        query = query.where(HistoricalPrice1D.date <= end_date)
 
-    return list(query.order_by(HistoricalPrice.date))
+    return list(query.order_by(HistoricalPrice1D.date))
 
 
 def update_historical_price(symbol: Union[Symbol, str], date: date, **kwargs) -> bool:
@@ -417,8 +417,8 @@ def update_historical_price(symbol: Union[Symbol, str], date: date, **kwargs) ->
         bool: True if the update was successful, False otherwise.
     """
     symbol_obj = _ensure_symbol(symbol)
-    query = HistoricalPrice.update(**kwargs).where(
-        (HistoricalPrice.symbol == symbol_obj) & (HistoricalPrice.date == date)
+    query = HistoricalPrice1D.update(**kwargs).where(
+        (HistoricalPrice1D.symbol == symbol_obj) & (HistoricalPrice1D.date == date)
     )
     return query.execute() > 0
 
@@ -435,8 +435,8 @@ def delete_historical_price(symbol: Union[Symbol, str], date: date) -> bool:
         bool: True if the deletion was successful, False otherwise.
     """
     symbol_obj = _ensure_symbol(symbol)
-    query = HistoricalPrice.delete().where(
-        (HistoricalPrice.symbol == symbol_obj) & (HistoricalPrice.date == date)
+    query = HistoricalPrice1D.delete().where(
+        (HistoricalPrice1D.symbol == symbol_obj) & (HistoricalPrice1D.date == date)
     )
     return query.execute() > 0
 
@@ -456,22 +456,32 @@ def bulk_upsert_historical_prices(
         int: The number of records inserted or updated.
     """
     symbol_obj = _ensure_symbol(symbol)
+    upserted_count = 0
+
     with db.atomic():
         for batch in helpers.chunked(price_data, 100):  # Process in batches of 100
-            HistoricalPrice.insert_many(
-                [{**data, "symbol": symbol_obj} for data in batch]
-            ).on_conflict(
-                conflict_target=[HistoricalPrice.symbol, HistoricalPrice.date],
-                preserve=[HistoricalPrice.symbol, HistoricalPrice.date],
-                update={
-                    HistoricalPrice.open: HistoricalPrice.open,
-                    HistoricalPrice.high: HistoricalPrice.high,
-                    HistoricalPrice.low: HistoricalPrice.low,
-                    HistoricalPrice.close: HistoricalPrice.close,
-                    HistoricalPrice.volume: HistoricalPrice.volume,
-                    HistoricalPrice.dividends: HistoricalPrice.dividends,
-                    HistoricalPrice.stock_splits: HistoricalPrice.stock_splits,
-                },
-            ).execute()
+            data_to_upsert = [{**data, "symbol": symbol_obj} for data in batch]
 
-    return len(price_data)
+            for data in data_to_upsert:
+                try:
+                    HistoricalPrice1D.insert(data).on_conflict(
+                        conflict_target=[
+                            HistoricalPrice1D.symbol,
+                            HistoricalPrice1D.date,
+                        ],
+                        update={
+                            HistoricalPrice1D.open: data["open"],
+                            HistoricalPrice1D.high: data["high"],
+                            HistoricalPrice1D.low: data["low"],
+                            HistoricalPrice1D.close: data["close"],
+                            HistoricalPrice1D.volume: data["volume"],
+                            HistoricalPrice1D.dividends: data["dividends"],
+                            HistoricalPrice1D.stock_splits: data["stock_splits"],
+                        },
+                    ).execute()
+                    upserted_count += 1
+                except IntegrityError:
+                    # Handle any integrity errors if necessary
+                    pass
+
+    return upserted_count

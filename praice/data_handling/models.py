@@ -151,6 +151,28 @@ class Symbol(BaseModel):
         return super(Symbol, cls).create(**query)
 
 
+class SymbolConfig(BaseModel):
+    """
+    Represents the configuration for a symbol.
+
+    Attributes:
+        symbol (ForeignKeyField): The foreign key to the Symbol model.
+        collect_price_data (BooleanField): Indicates whether to collect price data.
+        collect_yfinance_news (BooleanField): Indicates whether to collect news from Yahoo Finance.
+        collect_technical_indicators (BooleanField): Indicates whether to collect technical indicators.
+        collect_fundamental_data (BooleanField): Indicates whether to collect fundamental data.
+    """
+
+    symbol = ForeignKeyField(Symbol, backref="config", unique=True)
+    collect_price_data = BooleanField(default=True)
+    collect_yfinance_news = BooleanField(default=True)
+    collect_technical_indicators = BooleanField(default=True)
+    collect_fundamental_data = BooleanField(default=True)
+
+    class Meta:
+        table_name = "symbol_configs"
+
+
 class News(BaseModel):
     """
     Represents a news article.
@@ -257,7 +279,9 @@ def create_tables():
     This function uses the `db` connection to create tables in the database. It takes no arguments.
     """
     with db:
-        db.create_tables([Symbol, News, NewsSymbol, ScrapingUrl, HistoricalPrice1D])
+        db.create_tables(
+            [Symbol, SymbolConfig, News, NewsSymbol, ScrapingUrl, HistoricalPrice1D]
+        )
 
 
 if __name__ == "__main__":

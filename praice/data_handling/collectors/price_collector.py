@@ -4,7 +4,7 @@ from typing import Dict, List, Optional
 import yfinance as yf
 from loguru import logger
 
-from praice.data_handling.db_ops.crud import bulk_upsert_historical_prices
+from praice.data_handling.db_ops import crud
 from praice.data_handling.db_ops.symbol_helpers import get_active_symbols
 
 
@@ -42,12 +42,57 @@ def collect_historical_prices(
         hist = hist.rename(columns=str.lower)
         hist = hist.rename(columns={"stock splits": "stock_splits"})
         price_data = hist.to_dict(orient="records")
-        bulk_upsert_historical_prices(symbol, price_data)
+        crud.bulk_upsert_historical_prices(symbol, price_data)
         return price_data
 
     except Exception as e:
         logger.error(f"Error collecting historical prices for {symbol}: {str(e)}")
         return []
+
+
+def collect_historical_prices_all(
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
+    period: str = "max",
+) -> Dict[str, List[Dict]]:
+    """
+    Collects historical prices for all symbols that have price data
+    collection enabled in `symbol_configs`.
+
+    Args:
+        start_date (Optional[datetime]): The start date for collecting historical prices.
+            Defaults to None.
+        end_date (Optional[datetime]): The end date for collecting historical prices.
+            Defaults to None.
+        period (str): The period for collecting historical prices.
+            Defaults to "max".
+
+    Returns:
+        Dict[str, List[Dict]]: A dictionary containing historical price data for each symbol.
+
+    """
+    results = {}
+    configs = crud.list_symbol_configs()
+    for config in configs:
+        if config.collect_price_data:
+            try:
+                if start_date and end_date:
+                    price_data = collect_historical_prices(
+                        symbol=config.symbol.symbol,
+                        start_date=start_date,
+                        end_date=end_date,
+                    )
+                else:
+                    price_data = collect_historical_prices(
+                        symbol=config.symbol.symbol, period=period
+                    )
+
+                results[config.symbol.symbol] = price_data
+            except Exception as e:
+                logger.error(
+                    f"Error collecting historical prices for {config.symbol.symbol}: {str(e)}"
+                )
+    return results
 
 
 def update_historical_prices(symbol: str, lookback_days: int = 30) -> int:
@@ -73,7 +118,7 @@ def update_historical_prices(symbol: str, lookback_days: int = 30) -> int:
         return 0
 
     try:
-        updated_count = bulk_upsert_historical_prices(symbol, price_data)
+        updated_count = crud.bulk_upsert_historical_prices(symbol, price_data)
         logger.info(f"Updated {updated_count} historical price records for {symbol}")
         return updated_count
 

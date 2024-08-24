@@ -2,6 +2,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Optional
 
 import typer
+from peewee import DoesNotExist, IntegrityError
 from rich import print as rprint
 from rich.table import Table
 
@@ -14,6 +15,7 @@ from praice.data_handling.collectors.price_collector import (
     update_all_symbols_prices,
     update_historical_prices,
 )
+from praice.data_handling.db_ops import crud
 from praice.data_handling.db_ops.crud import (
     add_scraping_url,
     add_symbol,
@@ -37,11 +39,13 @@ logging.setup_logging()
 
 app = typer.Typer()
 symbol_app = typer.Typer()
+symbol_config_app = typer.Typer()
 scraping_url_app = typer.Typer()
 news_app = typer.Typer()
 price_app = typer.Typer()
 
 app.add_typer(symbol_app, name="symbol")
+app.add_typer(symbol_config_app, name="symbol-config")
 app.add_typer(scraping_url_app, name="scraping-url")
 app.add_typer(news_app, name="news")
 app.add_typer(price_app, name="price")
@@ -50,6 +54,8 @@ app.add_typer(price_app, name="price")
 # #################
 # Symbol commands
 # #################
+
+
 @symbol_app.command("add")
 def cli_add_symbol(
     symbol: str = typer.Option(..., prompt=True),
@@ -136,8 +142,120 @@ def cli_delete_symbol(symbol: str = typer.Argument(..., help="Symbol to delete")
 
 
 # #################
+# Symbol Config commands
+# #################
+
+
+@symbol_config_app.command("show")
+def show_symbol_config(symbol: str):
+    """
+    Show the configuration for a specific symbol.
+    """
+    try:
+        config = crud.get_symbol_config(symbol)
+        table = Table(title=f"Configuration for {symbol}")
+        table.add_column("Setting", style="cyan")
+        table.add_column("Value", style="magenta")
+
+        table.add_row("Collect Price Data", str(config.collect_price_data))
+        table.add_row("Collect YFinance News", str(config.collect_yfinance_news))
+        table.add_row(
+            "Collect Technical Indicators", str(config.collect_technical_indicators)
+        )
+        table.add_row("Collect Fundamental Data", str(config.collect_fundamental_data))
+        table.add_row("Custom Settings", config.custom_settings or "None")
+
+        rprint(table)
+    except DoesNotExist:
+        rprint(f"[red]No configuration found for symbol {symbol}[/red]")
+
+
+@symbol_config_app.command("create")
+def create_symbol_config_cli(
+    symbol: str,
+    collect_price_data: bool = typer.Option(
+        True, "--price/--no-price", help="Collect price data"
+    ),
+    collect_yfinance_news: bool = typer.Option(
+        True, "--news/--no-news", help="Collect YFinance news"
+    ),
+    collect_technical_indicators: bool = typer.Option(
+        True, "--tech/--no-tech", help="Collect technical indicators"
+    ),
+    collect_fundamental_data: bool = typer.Option(
+        True, "--fund/--no-fund", help="Collect fundamental data"
+    ),
+):
+    """
+    Create a new configuration for a symbol.
+    """
+    try:
+        crud.create_symbol_config(
+            symbol,
+            collect_price_data=collect_price_data,
+            collect_yfinance_news=collect_yfinance_news,
+            collect_technical_indicators=collect_technical_indicators,
+            collect_fundamental_data=collect_fundamental_data,
+        )
+        rprint(f"[green]Configuration created successfully for {symbol}[/green]")
+    except IntegrityError:
+        rprint(f"[red]Configuration already exists for symbol {symbol}[/red]")
+
+
+@symbol_config_app.command("update")
+def update_symbol_config_cli(
+    symbol: str,
+    collect_price_data: Optional[bool] = typer.Option(
+        None, "--price/--no-price", help="Collect price data"
+    ),
+    collect_yfinance_news: Optional[bool] = typer.Option(
+        None, "--news/--no-news", help="Collect YFinance news"
+    ),
+    collect_technical_indicators: Optional[bool] = typer.Option(
+        None, "--tech/--no-tech", help="Collect technical indicators"
+    ),
+    collect_fundamental_data: Optional[bool] = typer.Option(
+        None, "--fund/--no-fund", help="Collect fundamental data"
+    ),
+):
+    """
+    Update the configuration for a symbol.
+    """
+    update_data = {}
+    if collect_price_data is not None:
+        update_data["collect_price_data"] = collect_price_data
+    if collect_yfinance_news is not None:
+        update_data["collect_yfinance_news"] = collect_yfinance_news
+    if collect_technical_indicators is not None:
+        update_data["collect_technical_indicators"] = collect_technical_indicators
+    if collect_fundamental_data is not None:
+        update_data["collect_fundamental_data"] = collect_fundamental_data
+
+    if update_data:
+        if crud.update_symbol_config(symbol, **update_data):
+            rprint(f"[green]Configuration updated successfully for {symbol}[/green]")
+        else:
+            rprint(f"[red]Failed to update configuration for {symbol}[/red]")
+    else:
+        rprint("[yellow]No updates specified[/yellow]")
+
+
+@symbol_config_app.command("delete")
+def delete_symbol_config_cli(symbol: str):
+    """
+    Delete the configuration for a symbol.
+    """
+    if crud.delete_symbol_config(symbol):
+        rprint(f"[green]Configuration deleted successfully for {symbol}[/green]")
+    else:
+        rprint(f"[red]Failed to delete configuration for {symbol}[/red]")
+
+
+# #################
 # Scraping URL commands
 # #################
+
+
 @scraping_url_app.command("add")
 def cli_add_scraping_url(
     symbol: str = typer.Option(..., prompt=True),
@@ -213,6 +331,8 @@ def cli_delete_scraping_url(
 # #################
 # News commands
 # #################
+
+
 @news_app.command("collect-headlines")
 def cli_collect_news_headlines(
     symbol: str = typer.Argument(..., help="Symbol to collect news for"),
@@ -284,6 +404,8 @@ def cli_count_news_by_symbol(
 # #################
 # Price commands
 # #################
+
+
 @price_app.command("collect")
 def cli_collect_prices(
     symbol: str = typer.Argument(..., help="The stock symbol to collect data for"),

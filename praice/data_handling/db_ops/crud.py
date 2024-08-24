@@ -9,14 +9,16 @@ from praice.data_handling.models import (
     NewsSymbol,
     ScrapingUrl,
     Symbol,
+    SymbolConfig,
     db,
 )
 from praice.utils import helpers
 
-
 # ############################
 # Symbol CRUD operations
 # ############################
+
+
 def get_symbol(symbol: str) -> Symbol:
     """
     Retrieves a Symbol object based on the given symbol.
@@ -31,6 +33,16 @@ def get_symbol(symbol: str) -> Symbol:
         DoesNotExist: If no Symbol object is found for the given
     """
     return Symbol.get(Symbol.symbol == symbol.upper())
+
+
+def _ensure_symbol(symbol: Union[Symbol, str]) -> Symbol:
+    """
+    Ensure that we have a Symbol object.
+    If a string is provided, fetch the corresponding Symbol object.
+    """
+    if isinstance(symbol, str):
+        return get_symbol(symbol)
+    return symbol
 
 
 def add_symbol(
@@ -112,8 +124,76 @@ def get_asset_class(info: Dict[str, any]) -> str:
 
 
 # ############################
+# SymbolConfig CRUD operations
+# ############################
+
+
+def create_symbol_config(
+    symbol: Union[Symbol, str],
+    collect_price_data: bool = True,
+    collect_yfinance_news: bool = True,
+    collect_technical_indicators: bool = True,
+    collect_fundamental_data: bool = True,
+) -> SymbolConfig:
+    """
+    Create a new symbol configuration.
+    """
+    symbol_obj = _ensure_symbol(symbol)
+    return SymbolConfig.create(
+        symbol=symbol_obj,
+        collect_price_data=collect_price_data,
+        collect_yfinance_news=collect_yfinance_news,
+        collect_technical_indicators=collect_technical_indicators,
+        collect_fundamental_data=collect_fundamental_data,
+    )
+
+
+def get_symbol_config(symbol: Union[Symbol, str]) -> SymbolConfig:
+    """
+    Retrieve the configuration for a specific symbol.
+    """
+    symbol_obj = _ensure_symbol(symbol)
+    return SymbolConfig.get(SymbolConfig.symbol == symbol_obj)
+
+
+def update_symbol_config(symbol: Union[Symbol, str], **kwargs) -> bool:
+    """
+    Update the configuration for a specific symbol.
+    """
+    symbol_obj = _ensure_symbol(symbol)
+    query = SymbolConfig.update(**kwargs).where(SymbolConfig.symbol == symbol_obj)
+    return query.execute() > 0
+
+
+def delete_symbol_config(symbol: Union[Symbol, str]) -> bool:
+    """
+    Delete the configuration for a specific symbol.
+    """
+    symbol_obj = _ensure_symbol(symbol)
+    query = SymbolConfig.delete().where(SymbolConfig.symbol == symbol_obj)
+    return query.execute() > 0
+
+
+def get_or_create_symbol_config(
+    symbol: Union[Symbol, str],
+) -> Tuple[SymbolConfig, bool]:
+    """
+    Get the existing symbol configuration or create a new one with default values.
+    """
+    symbol_obj = _ensure_symbol(symbol)
+    return SymbolConfig.get_or_create(symbol=symbol_obj)
+
+
+def list_symbol_configs() -> List[SymbolConfig]:
+    """List all symbol configurations in the database."""
+    return list(SymbolConfig.select())
+
+
+# ############################
 # ScrapingUrl CRUD operations
 # ############################
+
+
 def add_scraping_url(symbol: str, url: str, source: str) -> ScrapingUrl:
     """Add a new scraping URL for a symbol."""
     with db.atomic():
@@ -156,6 +236,8 @@ def delete_scraping_url(id: int) -> bool:
 # ############################
 # News CRUD operations
 # ############################
+
+
 def create_news(
     title: str,
     url: str,
@@ -274,6 +356,8 @@ def delete_news(news_id: int) -> bool:
 # ############################
 # NewsSymbol CRUD operations
 # ############################
+
+
 def create_news_symbol(news: News, symbol: Symbol) -> NewsSymbol:
     """
     Create a NewsSymbol object.
@@ -305,16 +389,6 @@ def delete_news_symbol(news_symbol_id: int) -> bool:
 # ############################
 # HistoricalPrice CRUD operations
 # ############################
-
-
-def _ensure_symbol(symbol: Union[Symbol, str]) -> Symbol:
-    """
-    Ensure that we have a Symbol object.
-    If a string is provided, fetch the corresponding Symbol object.
-    """
-    if isinstance(symbol, str):
-        return get_symbol(symbol)
-    return symbol
 
 
 def create_historical_price(

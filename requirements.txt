@@ -6,6 +6,7 @@ peewee==3.17.6
 psycopg2-binary==2.9.9
 pydantic-settings==2.4.0
 pydantic==2.8.2
+pytz==2024.1
 requests==2.32.3
 rich==13.7.1
 tqdm==4.66.5

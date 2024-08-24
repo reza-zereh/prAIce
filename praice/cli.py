@@ -187,6 +187,8 @@ def create_symbol_config_cli(
         rprint(f"[green]Configuration created successfully for {symbol}[/green]")
     except IntegrityError:
         rprint(f"[red]Configuration already exists for symbol {symbol}[/red]")
+    except DoesNotExist:
+        rprint(f"[red]Symbol {symbol} not found in the database[/red]")
 
 
 @symbol_config_app.command("update")

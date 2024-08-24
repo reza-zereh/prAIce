@@ -6,14 +6,10 @@ from peewee import DoesNotExist, IntegrityError
 from rich import print as rprint
 from rich.table import Table
 
+from praice.data_handling.collectors import price_collector
 from praice.data_handling.collectors.news_collector import (
     collect_news_articles,
     collect_news_headlines,
-)
-from praice.data_handling.collectors.price_collector import (
-    collect_historical_prices,
-    update_all_symbols_prices,
-    update_historical_prices,
 )
 from praice.data_handling.db_ops import crud, news_helpers
 from praice.data_handling.models import db
@@ -481,11 +477,13 @@ def cli_collect_prices(
     if days:
         end_date = datetime.now(UTC)
         start_date = end_date - timedelta(days=days)
-        price_data = collect_historical_prices(
+        price_data = price_collector.collect_historical_prices(
             symbol=symbol, start_date=start_date, end_date=end_date
         )
     else:
-        price_data = collect_historical_prices(symbol=symbol, period=period)
+        price_data = price_collector.collect_historical_prices(
+            symbol=symbol, period=period
+        )
 
     if not price_data:
         rprint(f"[red]No price data collected for {symbol}[/red]")
@@ -509,30 +507,19 @@ def cli_collect_all_prices(
     Collect historical price data for all symbols
     that have price data collection enabled in `symbol_configs`.
     """
-    results = {}
-    configs = crud.list_symbol_configs()
-    for config in configs:
-        if config.collect_price_data:
-            if days:
-                end_date = datetime.now(UTC)
-                start_date = end_date - timedelta(days=days)
-                price_data = collect_historical_prices(
-                    symbol=config.symbol.symbol,
-                    start_date=start_date,
-                    end_date=end_date,
-                )
-            else:
-                price_data = collect_historical_prices(
-                    symbol=config.symbol.symbol, period=period
-                )
+    try:
+        if days:
+            end_date = datetime.now(UTC)
+            start_date = end_date - timedelta(days=days)
+            results = price_collector.collect_historical_prices_all(
+                start_date=start_date, end_date=end_date
+            )
+        else:
+            results = price_collector.collect_historical_prices_all(period=period)
 
-            results[config.symbol.symbol] = len(price_data)
-
-    total_collected = sum(results.values())
-    rprint(
-        f"[green]Collected prices for {len(results)} symbols. "
-        f"Total records collected: {total_collected}[/green]"
-    )
+        rprint(f"[green]Collected prices for {len(results)} symbols[/green]")
+    except Exception as e:
+        rprint(f"[red]Error collecting prices: {str(e)}[/red]")
 
 
 @price_app.command("update")
@@ -545,7 +532,7 @@ def cli_update_prices(
     """
     Update historical prices for a given symbol in the database.
     """
-    updated_count = update_historical_prices(symbol, days)
+    updated_count = price_collector.update_historical_prices(symbol, days)
     rprint(f"[green]Updated {updated_count} price records for {symbol}[/green]")
 
 
@@ -558,7 +545,7 @@ def cli_update_all_prices(
     """
     Update historical prices for all active symbols in the database.
     """
-    results = update_all_symbols_prices(days)
+    results = price_collector.update_all_symbols_prices(days)
     total_updated = sum(results.values())
     rprint(
         f"[green]Updated prices for {len(results)} symbols. Total records updated: {total_updated}[/green]"

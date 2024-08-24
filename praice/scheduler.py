@@ -1,11 +1,11 @@
+from datetime import timezone
+
 from apscheduler.executors.pool import ThreadPoolExecutor
 from apscheduler.jobstores.memory import MemoryJobStore
 from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 
-from praice.data_handling.collectors.news_collector import (
-    collect_news_articles,
-    collect_news_headlines_by_source,
-)
+from praice.data_handling.collectors import news_collector, price_collector
 from praice.utils.logging import get_scheduler_logger
 
 # Get the scheduler-specific logger
@@ -27,16 +27,10 @@ def collect_headlines_by_source_job(source: str):
 
     Args:
         source (str): The source from which to collect headlines.
-
-    Returns:
-        None
-
-    Raises:
-        Exception: If there is an error in the headline collection job.
     """
     logger.info(f"Starting headline collection job from source {source}")
     try:
-        collect_news_headlines_by_source(source)
+        news_collector.collect_news_headlines_by_source(source)
         logger.info("Headline collection job completed successfully")
     except Exception as e:
         logger.error(f"Error in headline collection job: {str(e)}")
@@ -45,20 +39,25 @@ def collect_headlines_by_source_job(source: str):
 def collect_articles_job():
     """
     Executes the article collection job.
-
-    Returns:
-        None
-
-    Raises:
-        Exception: If an error occurs during the article collection job.
-
     """
     logger.info("Starting article collection job")
     try:
-        collect_news_articles(limit=100)
+        news_collector.collect_news_articles(limit=100)
         logger.info("Article collection job completed successfully")
     except Exception as e:
         logger.error(f"Error in article collection job: {str(e)}")
+
+
+def collect_price_data_job():
+    """
+    Executes the price data collection job.
+    """
+    logger.info("Starting price data collection job")
+    try:
+        price_collector.collect_historical_prices_all(period="5d")
+        logger.info("Price data collection job completed successfully")
+    except Exception as e:
+        logger.error(f"Error in price data collection job: {str(e)}")
 
 
 def init_scheduler():
@@ -76,7 +75,7 @@ def init_scheduler():
     # Add jobs to the scheduler
     scheduler.add_job(
         collect_headlines_by_source_job,
-        "interval",
+        trigger="interval",
         minutes=80,
         id="collect_yfinance_headlines",
         kwargs={"source": "yfinance"},
@@ -84,9 +83,19 @@ def init_scheduler():
     logger.info("Added job: collect_yfinance_headlines")
 
     scheduler.add_job(
-        collect_articles_job, "interval", minutes=170, id="collect_articles"
+        collect_articles_job,
+        trigger="interval",
+        minutes=170,
+        id="collect_articles",
     )
     logger.info("Added job: collect_articles")
+
+    scheduler.add_job(
+        collect_price_data_job,
+        trigger=CronTrigger(hour=18, minute=0, timezone=timezone("US/Eastern")),
+        id="collect_price_data",
+    )
+    logger.info("Added job: collect_price_data (runs daily at 6:00 PM ET)")
 
     # Start the scheduler
     scheduler.start()

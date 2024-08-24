@@ -184,6 +184,11 @@ def get_or_create_symbol_config(
     return SymbolConfig.get_or_create(symbol=symbol_obj)
 
 
+def list_symbol_configs() -> List[SymbolConfig]:
+    """List all symbol configurations in the database."""
+    return list(SymbolConfig.select())
+
+
 # ############################
 # ScrapingUrl CRUD operations
 # ############################

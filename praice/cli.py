@@ -494,6 +494,47 @@ def cli_collect_prices(
     rprint(f"[green]Collected {len(price_data)} price records for {symbol}[/green]")
 
 
+@price_app.command("collect-all")
+def cli_collect_all_prices(
+    days: Optional[int] = typer.Option(None, help="Number of days to collect data for"),
+    period: Optional[str] = typer.Option(
+        "max",
+        help=(
+            "Period to collect data for. "
+            "Choices: 1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max"
+        ),
+    ),
+):
+    """
+    Collect historical price data for all symbols
+    that have price data collection enabled in `symbol_configs`.
+    """
+    results = {}
+    configs = crud.list_symbol_configs()
+    for config in configs:
+        if config.collect_price_data:
+            if days:
+                end_date = datetime.now(UTC)
+                start_date = end_date - timedelta(days=days)
+                price_data = collect_historical_prices(
+                    symbol=config.symbol.symbol,
+                    start_date=start_date,
+                    end_date=end_date,
+                )
+            else:
+                price_data = collect_historical_prices(
+                    symbol=config.symbol.symbol, period=period
+                )
+
+            results[config.symbol.symbol] = len(price_data)
+
+    total_collected = sum(results.values())
+    rprint(
+        f"[green]Collected prices for {len(results)} symbols. "
+        f"Total records collected: {total_collected}[/green]"
+    )
+
+
 @price_app.command("update")
 def cli_update_prices(
     symbol: str = typer.Argument(..., help="The stock symbol to update data for"),

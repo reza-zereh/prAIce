@@ -1,5 +1,4 @@
-from datetime import timezone
-
+import pytz
 from apscheduler.executors.pool import ThreadPoolExecutor
 from apscheduler.jobstores.memory import MemoryJobStore
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -92,7 +91,7 @@ def init_scheduler():
 
     scheduler.add_job(
         collect_price_data_job,
-        trigger=CronTrigger(hour=18, minute=0, timezone=timezone("US/Eastern")),
+        trigger=CronTrigger(hour=18, minute=0, timezone=pytz.timezone("US/Eastern")),
         id="collect_price_data",
     )
     logger.info("Added job: collect_price_data (runs daily at 6:00 PM ET)")

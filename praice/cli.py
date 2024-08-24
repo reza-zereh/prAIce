@@ -240,6 +240,31 @@ def delete_symbol_config_cli(symbol: str):
         rprint(f"[red]Failed to delete configuration for {symbol}[/red]")
 
 
+@symbol_config_app.command("list")
+def list_symbol_configs():
+    """
+    List all symbol configurations.
+    """
+    configs = crud.list_symbol_configs()
+    table = Table(title="Symbol Configurations")
+    table.add_column("Symbol", style="cyan")
+    table.add_column("Collect Price Data", style="magenta")
+    table.add_column("Collect YFinance News", style="green")
+    table.add_column("Collect Technical Indicators", style="yellow")
+    table.add_column("Collect Fundamental Data", style="blue")
+
+    for config in configs:
+        table.add_row(
+            config.symbol.symbol,
+            str(config.collect_price_data),
+            str(config.collect_yfinance_news),
+            str(config.collect_technical_indicators),
+            str(config.collect_fundamental_data),
+        )
+
+    rprint(table)
+
+
 # #################
 # Scraping URL commands
 # #################
@@ -259,6 +284,48 @@ def cli_add_scraping_url(
         )
     except Exception as e:
         rprint(f"[red]Error adding scraping URL: {str(e)}[/red]")
+
+
+@scraping_url_app.command("add-yfinance")
+def cli_add_yfinance_scraping_url(
+    symbol: str = typer.Option(..., prompt=True),
+):
+    """Add a new scraping URL for a symbol using Yahoo Finance."""
+    try:
+        symbol_obj = crud.get_symbol(symbol)
+        url = f"https://finance.yahoo.com/quote/{symbol_obj.symbol}/news/"
+        new_url = crud.add_scraping_url(symbol, url, "yfinance")
+        rprint(
+            f"[green]Scraping URL for {new_url.symbol.symbol} added successfully.[/green]"
+        )
+    except DoesNotExist:
+        rprint(f"[red]Symbol {symbol} not found in the database[/red]")
+    except IntegrityError:
+        rprint(f"[red]Scraping URL already exists for symbol {symbol}[/red]")
+    except Exception as e:
+        rprint(f"[red]Error adding scraping URL: {str(e)}[/red]")
+
+
+@scraping_url_app.command("add-yfinance-all")
+def cli_add_yfinance_scraping_url_all_symbol_configs():
+    """
+    Add scraping URLs for all symbols that have yfinance news collection enabled in `symbol-config` table.
+    """
+    configs = crud.list_symbol_configs()
+    for config in configs:
+        if config.collect_yfinance_news:
+            try:
+                url = f"https://finance.yahoo.com/quote/{config.symbol.symbol}/news/"
+                new_url = crud.add_scraping_url(config.symbol.symbol, url, "yfinance")
+                rprint(
+                    f"[green]Scraping URL for {new_url.symbol.symbol} added successfully.[/green]"
+                )
+            except IntegrityError:
+                rprint(
+                    f"[red]Scraping URL already exists for symbol {config.symbol.symbol}[/red]"
+                )
+            except Exception as e:
+                rprint(f"[red]Error adding scraping URL: {str(e)}[/red]")
 
 
 @scraping_url_app.command("list")

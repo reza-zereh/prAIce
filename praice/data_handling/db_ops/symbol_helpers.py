@@ -83,3 +83,13 @@ def get_asset_class(info: Dict[str, any]) -> str:
 
     # Default to 'stock' if we can't determine the asset class
     return "stock"
+
+
+def get_active_symbols() -> list:
+    """
+    Get all active symbols from the database.
+
+    Returns:
+        list: A list of active Symbol objects.
+    """
+    return list(Symbol.select().where(Symbol.is_active == True))  # noqa: E712

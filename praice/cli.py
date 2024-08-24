@@ -1,3 +1,4 @@
+from datetime import UTC, datetime, timedelta
 from typing import Optional
 
 import typer
@@ -8,11 +9,17 @@ from praice.data_handling.collectors.news_collector import (
     collect_news_articles,
     collect_news_headlines,
 )
+from praice.data_handling.collectors.price_collector import (
+    collect_historical_prices,
+    update_all_symbols_prices,
+    update_historical_prices,
+)
 from praice.data_handling.db_ops.crud import (
     add_scraping_url,
     add_symbol,
     delete_scraping_url,
     delete_symbol,
+    get_historical_prices,
     list_scraping_urls,
     list_symbols,
     update_scraping_url,
@@ -32,13 +39,17 @@ app = typer.Typer()
 symbol_app = typer.Typer()
 scraping_url_app = typer.Typer()
 news_app = typer.Typer()
+price_app = typer.Typer()
 
 app.add_typer(symbol_app, name="symbol")
 app.add_typer(scraping_url_app, name="scraping-url")
 app.add_typer(news_app, name="news")
+app.add_typer(price_app, name="price")
 
 
+# #################
 # Symbol commands
+# #################
 @symbol_app.command("add")
 def cli_add_symbol(
     symbol: str = typer.Option(..., prompt=True),
@@ -124,7 +135,9 @@ def cli_delete_symbol(symbol: str = typer.Argument(..., help="Symbol to delete")
         rprint(f"[red]Error deleting symbol: {str(e)}[/red]")
 
 
+# #################
 # Scraping URL commands
+# #################
 @scraping_url_app.command("add")
 def cli_add_scraping_url(
     symbol: str = typer.Option(..., prompt=True),
@@ -197,7 +210,9 @@ def cli_delete_scraping_url(
         rprint(f"[red]Error deleting scraping URL: {str(e)}[/red]")
 
 
+# #################
 # News commands
+# #################
 @news_app.command("collect-headlines")
 def cli_collect_news_headlines(
     symbol: str = typer.Argument(..., help="Symbol to collect news for"),
@@ -262,6 +277,109 @@ def cli_count_news_by_symbol(
 
     for symbol, count in counts.items():
         table.add_row(symbol, str(count))
+
+    rprint(table)
+
+
+# #################
+# Price commands
+# #################
+@price_app.command("collect")
+def cli_collect_prices(
+    symbol: str = typer.Argument(..., help="The stock symbol to collect data for"),
+    days: Optional[int] = typer.Option(None, help="Number of days to collect data for"),
+    period: Optional[str] = typer.Option(
+        "max",
+        help=(
+            "Period to collect data for. "
+            "Choices: 1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max"
+        ),
+    ),
+):
+    """
+    Collect historical price data for a given symbol.
+    """
+
+    if days:
+        end_date = datetime.now(UTC)
+        start_date = end_date - timedelta(days=days)
+        price_data = collect_historical_prices(
+            symbol=symbol, start_date=start_date, end_date=end_date
+        )
+    else:
+        price_data = collect_historical_prices(symbol=symbol, period=period)
+
+    if not price_data:
+        rprint(f"[red]No price data collected for {symbol}[/red]")
+        return
+
+    rprint(f"[green]Collected {len(price_data)} price records for {symbol}[/green]")
+
+
+@price_app.command("update")
+def cli_update_prices(
+    symbol: str = typer.Argument(..., help="The stock symbol to update data for"),
+    days: int = typer.Option(
+        30, help="Number of days to look back for updating prices"
+    ),
+):
+    """
+    Update historical prices for a given symbol in the database.
+    """
+    updated_count = update_historical_prices(symbol, days)
+    rprint(f"[green]Updated {updated_count} price records for {symbol}[/green]")
+
+
+@price_app.command("update-all")
+def cli_update_all_prices(
+    days: int = typer.Option(
+        30, help="Number of days to look back for updating prices"
+    ),
+):
+    """
+    Update historical prices for all active symbols in the database.
+    """
+    results = update_all_symbols_prices(days)
+    total_updated = sum(results.values())
+    rprint(
+        f"[green]Updated prices for {len(results)} symbols. Total records updated: {total_updated}[/green]"
+    )
+
+
+@price_app.command("show")
+def cli_show_prices(
+    symbol: str = typer.Argument(..., help="The stock symbol to show prices for"),
+    days: int = typer.Option(30, help="Number of days of price history to show"),
+):
+    """
+    Show historical prices for a given symbol.
+    """
+    end_date = datetime.now(UTC).date()
+    start_date = end_date - timedelta(days=days)
+
+    prices = get_historical_prices(symbol, start_date, end_date)
+
+    if not prices:
+        rprint(f"[red]No price data found for {symbol} in the last {days} days[/red]")
+        return
+
+    table = Table(title=f"Historical Prices for {symbol}")
+    table.add_column("Date", style="cyan")
+    table.add_column("Open", style="magenta")
+    table.add_column("High", style="green")
+    table.add_column("Low", style="red")
+    table.add_column("Close", style="blue")
+    table.add_column("Volume", style="yellow")
+
+    for price in prices:
+        table.add_row(
+            str(price.date),
+            f"{price.open:.2f}",
+            f"{price.high:.2f}",
+            f"{price.low:.2f}",
+            f"{price.close:.2f}",
+            f"{price.volume:,}",
+        )
 
     rprint(table)
 

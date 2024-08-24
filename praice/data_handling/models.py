@@ -3,9 +3,13 @@ from enum import Enum
 
 from peewee import (
     AutoField,
+    BigIntegerField,
     BooleanField,
     CharField,
+    CompositeKey,
+    DateField,
     DateTimeField,
+    DecimalField,
     ForeignKeyField,
     Model,
     PostgresqlDatabase,
@@ -230,6 +234,22 @@ class ScrapingUrl(BaseModel):
         return super(ScrapingUrl, self).save(*args, **kwargs)
 
 
+class HistoricalPrice1D(BaseModel):
+    symbol = ForeignKeyField(Symbol, backref="historical_prices")
+    date = DateField()
+    open = DecimalField(max_digits=10, decimal_places=2)
+    high = DecimalField(max_digits=10, decimal_places=2)
+    low = DecimalField(max_digits=10, decimal_places=2)
+    close = DecimalField(max_digits=10, decimal_places=2)
+    volume = BigIntegerField()
+    dividends = DecimalField(max_digits=10, decimal_places=2)
+    stock_splits = DecimalField(max_digits=10, decimal_places=2)
+
+    class Meta:
+        table_name = "historical_prices_1d"
+        primary_key = CompositeKey("symbol", "date")
+
+
 def create_tables():
     """
     Creates tables in the database.
@@ -237,7 +257,7 @@ def create_tables():
     This function uses the `db` connection to create tables in the database. It takes no arguments.
     """
     with db:
-        db.create_tables([Symbol, News, NewsSymbol, ScrapingUrl])
+        db.create_tables([Symbol, News, NewsSymbol, ScrapingUrl, HistoricalPrice1D])
 
 
 if __name__ == "__main__":

@@ -15,22 +15,7 @@ from praice.data_handling.collectors.price_collector import (
     update_all_symbols_prices,
     update_historical_prices,
 )
-from praice.data_handling.db_ops import crud
-from praice.data_handling.db_ops.crud import (
-    add_scraping_url,
-    add_symbol,
-    delete_scraping_url,
-    delete_symbol,
-    get_historical_prices,
-    list_scraping_urls,
-    list_symbols,
-    update_scraping_url,
-    update_symbol,
-)
-from praice.data_handling.db_ops.news_helpers import (
-    count_news_by_symbol,
-    count_news_with_null_content,
-)
+from praice.data_handling.db_ops import crud, news_helpers
 from praice.data_handling.models import db
 from praice.utils import logging
 
@@ -81,7 +66,9 @@ def cli_add_symbol(
     exchange = exchange or None
 
     try:
-        new_symbol = add_symbol(symbol, name, asset_class, sector, industry, exchange)
+        new_symbol = crud.add_symbol(
+            symbol, name, asset_class, sector, industry, exchange
+        )
         rprint(f"[green]Symbol {new_symbol.symbol} added successfully.[/green]")
     except Exception as e:
         rprint(f"[red]Error adding symbol: {str(e)}[/red]")
@@ -90,7 +77,7 @@ def cli_add_symbol(
 @symbol_app.command("list")
 def cli_list_symbols():
     """List all symbols in the database."""
-    symbols = list_symbols()
+    symbols = crud.list_symbols()
     table = Table(title="Symbols")
     table.add_column("Symbol", style="cyan")
     table.add_column("Name", style="magenta")
@@ -123,7 +110,7 @@ def cli_update_symbol(
 ):
     """Update an existing symbol in the database."""
     try:
-        update_symbol(symbol, name, asset_class, sector, industry, exchange)
+        crud.update_symbol(symbol, name, asset_class, sector, industry, exchange)
         rprint(f"[green]Symbol {symbol} updated successfully.[/green]")
     except Exception as e:
         rprint(f"[red]Error updating symbol: {str(e)}[/red]")
@@ -133,7 +120,7 @@ def cli_update_symbol(
 def cli_delete_symbol(symbol: str = typer.Argument(..., help="Symbol to delete")):
     """Delete a symbol from the database."""
     try:
-        if delete_symbol(symbol):
+        if crud.delete_symbol(symbol):
             rprint(f"[green]Symbol {symbol} deleted successfully.[/green]")
         else:
             rprint(f"[red]Symbol {symbol} not found.[/red]")
@@ -264,7 +251,7 @@ def cli_add_scraping_url(
 ):
     """Add a new scraping URL for a symbol."""
     try:
-        new_url = add_scraping_url(symbol, url, source)
+        new_url = crud.add_scraping_url(symbol, url, source)
         rprint(
             f"[green]Scraping URL for {new_url.symbol.symbol} added successfully.[/green]"
         )
@@ -277,7 +264,7 @@ def cli_list_scraping_urls(
     symbol: Optional[str] = typer.Option(None, help="Filter by symbol"),
 ):
     """List scraping URLs, optionally filtered by symbol."""
-    urls = list_scraping_urls(symbol)
+    urls = crud.list_scraping_urls(symbol)
     table = Table(title="Scraping URLs")
     table.add_column("ID", style="cyan")
     table.add_column("Symbol", style="magenta")
@@ -308,7 +295,7 @@ def cli_update_scraping_url(
 ):
     """Update an existing scraping URL."""
     try:
-        update_scraping_url(id, url, source, is_active)
+        crud.update_scraping_url(id, url, source, is_active)
         rprint(f"[green]Scraping URL (ID: {id}) updated successfully.[/green]")
     except Exception as e:
         rprint(f"[red]Error updating scraping URL: {str(e)}[/red]")
@@ -320,7 +307,7 @@ def cli_delete_scraping_url(
 ):
     """Delete a scraping URL."""
     try:
-        if delete_scraping_url(id):
+        if crud.delete_scraping_url(id):
             rprint(f"[green]Scraping URL (ID: {id}) deleted successfully.[/green]")
         else:
             rprint(f"[red]Scraping URL with ID {id} not found.[/red]")
@@ -380,7 +367,7 @@ def cli_collect_news_articles(
 @news_app.command("count-null-content")
 def cli_count_news_with_null_content():
     """Count the number of news articles with null content."""
-    count = count_news_with_null_content()
+    count = news_helpers.count_news_with_null_content()
     rprint(f"[cyan]Number of news articles with null content: {count}[/cyan]")
 
 
@@ -389,7 +376,7 @@ def cli_count_news_by_symbol(
     n: int = typer.Option(-1, "-n", help="Number of symbols to return"),
 ):
     """Count the number of news articles for each symbol."""
-    counts = count_news_by_symbol(n)["news_count_by_symbol"]
+    counts = news_helpers.count_news_by_symbol(n)["news_count_by_symbol"]
 
     table = Table(title="News Counts by Symbol")
     table.add_column("Symbol", style="cyan")
@@ -479,7 +466,7 @@ def cli_show_prices(
     end_date = datetime.now(UTC).date()
     start_date = end_date - timedelta(days=days)
 
-    prices = get_historical_prices(symbol, start_date, end_date)
+    prices = crud.get_historical_prices(symbol, start_date, end_date)
 
     if not prices:
         rprint(f"[red]No price data found for {symbol} in the last {days} days[/red]")

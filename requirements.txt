@@ -1,6 +1,7 @@
 apscheduler==3.10.4
 beautifulsoup4==4.12.3
 loguru==0.7.2
+numpy==1.26.4
 pandas==2.2.2
 peewee==3.17.6
 psycopg2-binary==2.9.9
@@ -9,6 +10,7 @@ pydantic==2.8.2
 pytz==2024.1
 requests==2.32.3
 rich==13.7.1
+TA-Lib==0.4.32
 tqdm==4.66.5
 typer==0.12.3
 yfinance==0.2.41

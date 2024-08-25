@@ -1,7 +1,7 @@
 from datetime import UTC, date, datetime
 from typing import Dict, List, Optional, Tuple, Union
 
-from peewee import IntegrityError
+from peewee import DoesNotExist, IntegrityError
 
 from praice.data_handling.models import (
     HistoricalPrice1D,
@@ -10,6 +10,8 @@ from praice.data_handling.models import (
     ScrapingUrl,
     Symbol,
     SymbolConfig,
+    TechnicalAnalysis,
+    Timeframe,
     db,
 )
 from praice.utils import helpers
@@ -467,7 +469,11 @@ def get_historical_prices(
     Returns:
         List[HistoricalPrice]: A list of HistoricalPrice objects.
     """
-    symbol_obj = _ensure_symbol(symbol)
+    try:
+        symbol_obj = _ensure_symbol(symbol)
+    except DoesNotExist:
+        raise ValueError(f"Symbol '{symbol}' does not exist.")
+
     query = HistoricalPrice1D.select().where(HistoricalPrice1D.symbol == symbol_obj)
 
     if start_date:
@@ -559,3 +565,217 @@ def bulk_upsert_historical_prices(
                     pass
 
     return upserted_count
+
+
+# ############################
+# TechnicalAnalysis CRUD operations
+# ############################
+
+
+def create_technical_analysis(
+    symbol: Union[Symbol, str],
+    date: date,
+    timeframe: Union[Timeframe, str] = Timeframe.DAYS_1,
+    technical_indicators: Dict = None,
+    candlestick_patterns: Dict = None,
+) -> TechnicalAnalysis:
+    """
+    Create a new TechnicalAnalysis record.
+
+    Args:
+        symbol (Union[Symbol, str]): Symbol object or symbol string.
+        date (date): Date of the analysis.
+        timeframe (Union[Timeframe, str]): Timeframe of the analysis. Defaults to DAYS_1.
+        technical_indicators (Dict, optional): Dictionary of technical indicators.
+        candlestick_patterns (Dict, optional): Dictionary of candlestick patterns.
+
+    Returns:
+        TechnicalAnalysis: The created TechnicalAnalysis object.
+
+    Raises:
+        ValueError: If the symbol doesn't exist or if the timeframe is invalid.
+    """
+    try:
+        symbol_obj = _ensure_symbol(symbol)
+    except DoesNotExist:
+        raise ValueError(f"Symbol '{symbol}' does not exist.")
+
+    if isinstance(timeframe, str):
+        try:
+            timeframe = Timeframe(timeframe)
+        except ValueError:
+            raise ValueError(f"Invalid timeframe: {timeframe}")
+
+    with db.atomic():
+        return TechnicalAnalysis.create(
+            symbol=symbol_obj,
+            date=date,
+            timeframe=timeframe.value,
+            technical_indicators=technical_indicators or {},
+            candlestick_patterns=candlestick_patterns or {},
+        )
+
+
+def update_technical_analysis(
+    symbol: Union[Symbol, str],
+    date: date,
+    timeframe: Union[Timeframe, str] = Timeframe.DAYS_1,
+    technical_indicators: Dict = None,
+    candlestick_patterns: Dict = None,
+) -> TechnicalAnalysis:
+    """
+    Update an existing TechnicalAnalysis record.
+
+    Args:
+        symbol (Union[Symbol, str]): Symbol object or symbol string.
+        date (date): Date of the analysis.
+        timeframe (Union[Timeframe, str]): Timeframe of the analysis. Defaults to DAYS_1.
+        technical_indicators (Dict, optional): Dictionary of technical indicators to update.
+        candlestick_patterns (Dict, optional): Dictionary of candlestick patterns to update.
+
+    Returns:
+        TechnicalAnalysis: The updated TechnicalAnalysis object.
+
+    Raises:
+        DoesNotExist: If the TechnicalAnalysis record doesn't exist.
+        ValueError: If the symbol doesn't exist or if the timeframe is invalid.
+    """
+    try:
+        symbol_obj = _ensure_symbol(symbol)
+    except DoesNotExist:
+        raise ValueError(f"Symbol '{symbol}' does not exist.")
+
+    if isinstance(timeframe, str):
+        try:
+            timeframe = Timeframe(timeframe)
+        except ValueError:
+            raise ValueError(f"Invalid timeframe: {timeframe}")
+
+    with db.atomic():
+        analysis = TechnicalAnalysis.get(
+            (TechnicalAnalysis.symbol == symbol_obj)
+            & (TechnicalAnalysis.date == date)
+            & (TechnicalAnalysis.timeframe == timeframe.value)
+        )
+
+        if technical_indicators:
+            analysis.technical_indicators.update(technical_indicators)
+        if candlestick_patterns:
+            analysis.candlestick_patterns.update(candlestick_patterns)
+
+        analysis.save()
+        return analysis
+
+
+def delete_technical_analysis(
+    symbol: Union[Symbol, str],
+    date: date,
+    timeframe: Union[Timeframe, str] = Timeframe.DAYS_1,
+) -> bool:
+    """
+    Delete a TechnicalAnalysis record.
+
+    Args:
+        symbol (Union[Symbol, str]): Symbol object or symbol string.
+        date (date): Date of the analysis.
+        timeframe (Union[Timeframe, str]): Timeframe of the analysis. Defaults to DAYS_1.
+
+    Returns:
+        bool: True if a record was deleted, False otherwise.
+
+    Raises:
+        ValueError: If the symbol doesn't exist or if the timeframe is invalid.
+    """
+    try:
+        symbol_obj = _ensure_symbol(symbol)
+    except DoesNotExist:
+        raise ValueError(f"Symbol '{symbol}' does not exist.")
+
+    if isinstance(timeframe, str):
+        try:
+            timeframe = Timeframe(timeframe)
+        except ValueError:
+            raise ValueError(f"Invalid timeframe: {timeframe}")
+
+    with db.atomic():
+        query = TechnicalAnalysis.delete().where(
+            (TechnicalAnalysis.symbol == symbol_obj)
+            & (TechnicalAnalysis.date == date)
+            & (TechnicalAnalysis.timeframe == timeframe.value)
+        )
+        deleted_count = query.execute()
+        return deleted_count > 0
+
+
+def bulk_upsert_technical_analysis(
+    symbol: Union[Symbol, str],
+    timeframe: Union[Timeframe, str],
+    data: Dict[str, Dict[str, Dict]],
+) -> int:
+    """
+    Perform a bulk upsert operation for TechnicalAnalysis records.
+
+    Args:
+        symbol (Union[Symbol, str]): Symbol object or symbol string.
+        timeframe (Union[Timeframe, str]): Timeframe of the analysis.
+        data (Dict[str, Dict[str, Dict]]): Dictionary of dates with their corresponding
+                                           technical indicators and candlestick patterns.
+                                           Format:
+                                           {
+                                               'YYYY-MM-DD': {
+                                                   'technical_indicators': {...},
+                                                   'candlestick_patterns': {...}
+                                               },
+                                               ...
+                                           }
+
+    Returns:
+        int: The number of records inserted or updated.
+
+    Raises:
+        ValueError: If the symbol doesn't exist, if the timeframe is invalid,
+                    or if the date format is incorrect.
+    """
+    try:
+        symbol_obj = _ensure_symbol(symbol)
+    except DoesNotExist:
+        raise ValueError(f"Symbol '{symbol}' does not exist.")
+
+    if isinstance(timeframe, str):
+        try:
+            timeframe = Timeframe(timeframe)
+        except ValueError:
+            raise ValueError(f"Invalid timeframe: {timeframe}")
+
+    upsert_count = 0
+
+    with db.atomic():
+        for date_str, analysis_data in data.items():
+            try:
+                date = datetime.strptime(date_str, "%Y-%m-%d").date()
+            except ValueError:
+                raise ValueError(
+                    f"Invalid date format: {date_str}. Expected format: YYYY-MM-DD"
+                )
+
+            technical_indicators = analysis_data.get("technical_indicators", {})
+            candlestick_patterns = analysis_data.get("candlestick_patterns", {})
+
+            analysis, created = TechnicalAnalysis.get_or_create(
+                symbol=symbol_obj,
+                date=date,
+                timeframe=timeframe.value,
+                defaults={
+                    "technical_indicators": technical_indicators,
+                    "candlestick_patterns": candlestick_patterns,
+                },
+            )
+
+            if not created:
+                analysis.technical_indicators.update(technical_indicators)
+                analysis.candlestick_patterns.update(candlestick_patterns)
+                analysis.save()
+
+            upsert_count += 1
+
+    return upsert_count

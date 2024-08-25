@@ -4,6 +4,7 @@ from typing import Optional
 import typer
 from peewee import DoesNotExist, IntegrityError
 from rich import print as rprint
+from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
 from praice.data_handling.collectors import price_collector
@@ -11,7 +12,7 @@ from praice.data_handling.collectors.news_collector import (
     collect_news_articles,
     collect_news_headlines,
 )
-from praice.data_handling.db_ops import crud, news_helpers
+from praice.data_handling.db_ops import crud, news_helpers, ta_helpers
 from praice.data_handling.models import db
 from praice.utils import logging
 
@@ -24,12 +25,14 @@ symbol_config_app = typer.Typer()
 scraping_url_app = typer.Typer()
 news_app = typer.Typer()
 price_app = typer.Typer()
+ta_app = typer.Typer()
 
 app.add_typer(symbol_app, name="symbol")
 app.add_typer(symbol_config_app, name="symbol-config")
 app.add_typer(scraping_url_app, name="scraping-url")
 app.add_typer(news_app, name="news")
 app.add_typer(price_app, name="price")
+app.add_typer(ta_app, name="ta")
 
 
 # #################
@@ -588,6 +591,66 @@ def cli_show_prices(
         )
 
     rprint(table)
+
+
+# #################
+# TechnicalAnalysis commands
+# #################
+
+
+@ta_app.command("calculate")
+def calculate_ta(
+    symbol: str = typer.Argument(..., help="The stock symbol to calculate TA for"),
+    days: int = typer.Option(None, help="Number of days to calculate TA for"),
+):
+    """
+    Calculate and store technical analysis data for a given symbol.
+    """
+
+    if days:
+        end_date = datetime.now(UTC).date()
+        start_date = end_date - timedelta(days=days)
+    else:
+        start_date = None
+        end_date = None
+
+    try:
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            transient=True,
+        ) as progress:
+            progress.add_task(description="Processing...", total=None)
+            upsert_count = ta_helpers.calculate_and_store_technical_analysis(
+                symbol, start_date, end_date
+            )
+
+        rprint(
+            f"[green]Calculated and stored {upsert_count} records for {symbol}[/green]"
+        )
+    except Exception as e:
+        rprint(f"[red]Error calculating technical analysis: {str(e)}[/red]")
+
+
+@ta_app.command("delete")
+def delete_ta(
+    symbol: str = typer.Argument(..., help="The stock symbol to delete TA for"),
+    timeframe: str = typer.Option(
+        "1D", "--timeframe", help="Timeframe to delete TA for"
+    ),
+):
+    """
+    Delete technical analysis data for a given symbol and timeframe.
+    """
+    try:
+        deleted_count = ta_helpers.delete_technical_analysis_by_symbol(
+            symbol, timeframe=timeframe
+        )
+        rprint(
+            f"[green]Deleted {deleted_count} records for {symbol} timeframe {timeframe}[/green]"
+        )
+    except Exception as e:
+        rprint(f"[red]Error deleting technical analysis: {str(e)}[/red]")
 
 
 if __name__ == "__main__":

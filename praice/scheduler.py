@@ -32,6 +32,7 @@ def collect_headlines_by_source_job(source: str):
     """
     logger.info(f"Starting headline collection job from source {source}")
     try:
+        # Collects news headlines from the specified source
         news_collector.collect_news_headlines_by_source(source)
         logger.info("Headline collection job completed successfully")
     except Exception as e:
@@ -44,6 +45,7 @@ def collect_articles_job():
     """
     logger.info("Starting article collection job")
     try:
+        # Collects news articles with null content and scrapes their full content
         news_collector.collect_news_articles(limit=100)
         logger.info("Article collection job completed successfully")
     except Exception as e:
@@ -56,6 +58,8 @@ def collect_price_data_job():
     """
     logger.info("Starting price data collection job")
     try:
+        # Collect historical price data for all symbols that have collect_price_data
+        # set to True in the SymbolConfig table for the last 5 days
         price_collector.collect_historical_prices_all(period="5d")
         logger.info("Price data collection job completed successfully")
     except Exception as e:
@@ -90,15 +94,19 @@ def init_scheduler():
     """
     Initializes and starts the scheduler.
 
-    Jobs added:
-    - collect_headlines_by_source_job: Collects headlines from the 'yfinance' source every hour.
-    - collect_articles_job: Collects articles every 2 hours.
+    Jobs:
+        - collect_headlines_by_source_job: Collects headlines from the 'yfinance' source.
+        - collect_articles_job: Collects news articles.
+        - collect_price_data_job: Collects price data.
+        - calculate_and_store_technical_analysis_job: Calculates and stores technical analysis.
 
     Returns:
         None
     """
 
     # Add jobs to the scheduler
+
+    # Collect headlines from the 'yfinance' source every 80 minutes
     scheduler.add_job(
         collect_headlines_by_source_job,
         trigger="interval",
@@ -108,6 +116,7 @@ def init_scheduler():
     )
     logger.info("Added job: collect_yfinance_headlines")
 
+    # Collect news articles every 170 minutes
     scheduler.add_job(
         collect_articles_job,
         trigger="interval",
@@ -116,6 +125,7 @@ def init_scheduler():
     )
     logger.info("Added job: collect_articles")
 
+    # Collect price data daily at 6:00 PM ET
     scheduler.add_job(
         collect_price_data_job,
         trigger=CronTrigger(hour=18, minute=0, timezone=pytz.timezone("US/Eastern")),
@@ -123,6 +133,7 @@ def init_scheduler():
     )
     logger.info("Added job: collect_price_data (runs daily at 6:00 PM ET)")
 
+    # Calculate and store technical analysis daily at 6:30 PM ET
     scheduler.add_job(
         calculate_and_store_technical_analysis_job,
         trigger=CronTrigger(hour=18, minute=30, timezone=pytz.timezone("US/Eastern")),

@@ -1,4 +1,5 @@
-from typing import Any, Dict
+import datetime
+from typing import Any, Dict, Union
 
 import pandas as pd
 import talib
@@ -253,12 +254,16 @@ def process_technical_analysis(data: pd.DataFrame) -> pd.DataFrame:
 
 def technical_analysis_to_dict(
     data: pd.DataFrame,
+    start_date: Union[datetime.date, str] = None,
+    end_date: Union[datetime.date, str] = None,
 ) -> Dict[str, Dict[str, Dict[str, Any]]]:
     """
     Convert a DataFrame with technical analysis data to a dictionary format.
 
     Args:
         data (pd.DataFrame): DataFrame with technical indicators and candlestick patterns.
+        start_date (Union[datetime.date, str], optional): The start date of the range (inclusive).
+        end_date (Union[datetime.date, str], optional): The end date of the range (inclusive).
 
     Returns:
         Dict[str, Dict[str, Dict[str, Any]]]: A dictionary with the format:
@@ -271,6 +276,14 @@ def technical_analysis_to_dict(
         }
     """
     result = {}
+    if start_date is not None:
+        if isinstance(start_date, str):
+            start_date = datetime.datetime.strptime(start_date, "%Y-%m-%d").date()
+        data = data.loc[start_date:]
+    if end_date is not None:
+        if isinstance(end_date, str):
+            end_date = datetime.datetime.strptime(end_date, "%Y-%m-%d").date()
+        data = data.loc[:end_date]
 
     # Identify technical indicator and candlestick pattern columns
     tech_indicator_cols = [
@@ -299,16 +312,22 @@ def technical_analysis_to_dict(
 
 def process_and_format_technical_analysis(
     data: pd.DataFrame,
+    start_date: Union[datetime.date, str] = None,
+    end_date: Union[datetime.date, str] = None,
 ) -> Dict[str, Dict[str, Dict[str, Any]]]:
     """
     Process technical analysis for the given data and format the result as a dictionary.
 
     Args:
-        data (pd.DataFrame): DataFrame with 'open', 'high', 'low', 'close', 'volume' columns.
-        timeframe (Timeframe): The timeframe of the data.
+        data (pd.DataFrame):
+            DataFrame with 'open', 'high', 'low', 'close', 'volume' columns and 'date' index.
+        start_date (Union[datetime.date, str], optional): The start date of the range (inclusive).
+        end_date (Union[datetime.date, str], optional): The end date of the range (inclusive).
 
     Returns:
         Dict[str, Dict[str, Dict[str, Any]]]: A dictionary with processed technical analysis data.
     """
     processed_data = process_technical_analysis(data)
-    return technical_analysis_to_dict(processed_data)
+    return technical_analysis_to_dict(
+        processed_data, start_date=start_date, end_date=end_date
+    )

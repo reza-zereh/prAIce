@@ -599,7 +599,7 @@ def cli_show_prices(
 
 
 @ta_app.command("calculate")
-def calculate_ta(
+def cli_calculate_ta(
     symbol: str = typer.Argument(..., help="The stock symbol to calculate TA for"),
     days: int = typer.Option(None, help="Number of days to calculate TA for"),
 ):
@@ -633,7 +633,7 @@ def calculate_ta(
 
 
 @ta_app.command("delete")
-def delete_ta(
+def cli_delete_ta(
     symbol: str = typer.Argument(..., help="The stock symbol to delete TA for"),
     timeframe: str = typer.Option(
         "1D", "--timeframe", help="Timeframe to delete TA for"

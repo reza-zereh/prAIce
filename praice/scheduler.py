@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 import pytz
 from apscheduler.executors.pool import ThreadPoolExecutor
 from apscheduler.jobstores.memory import MemoryJobStore
@@ -5,6 +7,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from praice.data_handling.collectors import news_collector, price_collector
+from praice.data_handling.db_ops import ta_helpers
 from praice.utils.logging import get_scheduler_logger
 
 # Get the scheduler-specific logger
@@ -29,6 +32,7 @@ def collect_headlines_by_source_job(source: str):
     """
     logger.info(f"Starting headline collection job from source {source}")
     try:
+        # Collects news headlines from the specified source
         news_collector.collect_news_headlines_by_source(source)
         logger.info("Headline collection job completed successfully")
     except Exception as e:
@@ -41,6 +45,7 @@ def collect_articles_job():
     """
     logger.info("Starting article collection job")
     try:
+        # Collects news articles with null content and scrapes their full content
         news_collector.collect_news_articles(limit=100)
         logger.info("Article collection job completed successfully")
     except Exception as e:
@@ -53,25 +58,55 @@ def collect_price_data_job():
     """
     logger.info("Starting price data collection job")
     try:
+        # Collect historical price data for all symbols that have collect_price_data
+        # set to True in the SymbolConfig table for the last 5 days
         price_collector.collect_historical_prices_all(period="5d")
         logger.info("Price data collection job completed successfully")
     except Exception as e:
         logger.error(f"Error in price data collection job: {str(e)}")
 
 
+def calculate_and_store_technical_analysis_job():
+    """
+    Executes the technical analysis calculation and storage job.
+    """
+    logger.info("Starting technical analysis calculation and storage job")
+    try:
+        end_date = datetime.now(
+            tz=pytz.timezone("US/Eastern")
+        ).date()  # get today's date
+        start_date = end_date - timedelta(days=2)  # get the date 2 days ago
+        # Calculate and store technical analysis for all symbols
+        # that have collect_technical_indicators set to True in the SymbolConfig table
+        ta_helpers.calculate_and_store_technical_analysis_for_all_symbols(
+            start_date=start_date, end_date=end_date
+        )
+        logger.info(
+            "Technical analysis calculation and storage job completed successfully"
+        )
+    except Exception as e:
+        logger.error(
+            f"Error in technical analysis calculation and storage job: {str(e)}"
+        )
+
+
 def init_scheduler():
     """
     Initializes and starts the scheduler.
 
-    Jobs added:
-    - collect_headlines_by_source_job: Collects headlines from the 'yfinance' source every hour.
-    - collect_articles_job: Collects articles every 2 hours.
+    Jobs:
+        - collect_headlines_by_source_job: Collects headlines from the 'yfinance' source.
+        - collect_articles_job: Collects news articles.
+        - collect_price_data_job: Collects price data.
+        - calculate_and_store_technical_analysis_job: Calculates and stores technical analysis.
 
     Returns:
         None
     """
 
     # Add jobs to the scheduler
+
+    # Collect headlines from the 'yfinance' source every 80 minutes
     scheduler.add_job(
         collect_headlines_by_source_job,
         trigger="interval",
@@ -81,6 +116,7 @@ def init_scheduler():
     )
     logger.info("Added job: collect_yfinance_headlines")
 
+    # Collect news articles every 170 minutes
     scheduler.add_job(
         collect_articles_job,
         trigger="interval",
@@ -89,12 +125,23 @@ def init_scheduler():
     )
     logger.info("Added job: collect_articles")
 
+    # Collect price data daily at 6:00 PM ET
     scheduler.add_job(
         collect_price_data_job,
         trigger=CronTrigger(hour=18, minute=0, timezone=pytz.timezone("US/Eastern")),
         id="collect_price_data",
     )
     logger.info("Added job: collect_price_data (runs daily at 6:00 PM ET)")
+
+    # Calculate and store technical analysis daily at 6:30 PM ET
+    scheduler.add_job(
+        calculate_and_store_technical_analysis_job,
+        trigger=CronTrigger(hour=18, minute=30, timezone=pytz.timezone("US/Eastern")),
+        id="calculate_and_store_technical_analysis",
+    )
+    logger.info(
+        "Added job: calculate_and_store_technical_analysis (runs daily at 6:30 PM ET)"
+    )
 
     # Start the scheduler
     scheduler.start()

@@ -15,6 +15,7 @@ from peewee import (
     PostgresqlDatabase,
     TextField,
 )
+from playhouse.postgres_ext import JSONField
 
 from praice.config import settings
 
@@ -272,6 +273,42 @@ class HistoricalPrice1D(BaseModel):
         primary_key = CompositeKey("symbol", "date")
 
 
+class Timeframe(Enum):
+    """Enum class representing different timeframes."""
+
+    HOURS_1 = "1H"
+    HOURS_4 = "4H"
+    DAYS_1 = "1D"
+    WEEKS_1 = "1W"
+    WEEKS_2 = "2W"
+    MONTHS_1 = "1M"
+    MONTHS_3 = "3M"
+
+
+class TechnicalAnalysis(BaseModel):
+    symbol = ForeignKeyField(Symbol, backref="technical_analysis")
+    date = DateField()
+    timeframe = CharField(
+        max_length=5,
+        choices=[(e.value, e.name) for e in Timeframe],
+        default=Timeframe.DAYS_1.value,
+    )
+    technical_indicators = JSONField(default=dict)
+    candlestick_patterns = JSONField(default=dict)
+
+    class Meta:
+        table_name = "technical_analysis"
+        indexes = ((("symbol", "date", "timeframe"), True),)
+
+    def save(self, *args, **kwargs):
+        if self.timeframe not in [e.value for e in Timeframe]:
+            raise ValueError(
+                f"Invalid timeframe: {self.timeframe}. "
+                f"Must be one of {[e.value for e in Timeframe]}"
+            )
+        return super(TechnicalAnalysis, self).save(*args, **kwargs)
+
+
 def create_tables():
     """
     Creates tables in the database.
@@ -280,7 +317,15 @@ def create_tables():
     """
     with db:
         db.create_tables(
-            [Symbol, SymbolConfig, News, NewsSymbol, ScrapingUrl, HistoricalPrice1D]
+            [
+                Symbol,
+                SymbolConfig,
+                News,
+                NewsSymbol,
+                ScrapingUrl,
+                HistoricalPrice1D,
+                TechnicalAnalysis,
+            ]
         )
 
 

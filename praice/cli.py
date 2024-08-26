@@ -632,6 +632,40 @@ def cli_calculate_ta(
         rprint(f"[red]Error calculating technical analysis: {str(e)}[/red]")
 
 
+@ta_app.command("calculate-all")
+def cli_calculate_all_ta(
+    days: int = typer.Option(None, help="Number of days to calculate TA for"),
+):
+    """
+    Calculate and store technical analysis data for all symbols.
+    """
+    if days:
+        end_date = datetime.now(UTC).date()
+        start_date = end_date - timedelta(days=days)
+    else:
+        start_date = None
+        end_date = None
+
+    try:
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            transient=True,
+        ) as progress:
+            progress.add_task(description="Processing...", total=None)
+            upsert_count = (
+                ta_helpers.calculate_and_store_technical_analysis_for_all_symbols(
+                    start_date=start_date, end_date=end_date
+                )
+            )
+
+        rprint(
+            f"[green]Calculated and stored {upsert_count} records for all symbols[/green]"
+        )
+    except Exception as e:
+        rprint(f"[red]Error calculating technical analysis: {str(e)}[/red]")
+
+
 @ta_app.command("delete")
 def cli_delete_ta(
     symbol: str = typer.Argument(..., help="The stock symbol to delete TA for"),

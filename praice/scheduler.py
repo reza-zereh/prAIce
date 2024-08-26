@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 import pytz
 from apscheduler.executors.pool import ThreadPoolExecutor
 from apscheduler.jobstores.memory import MemoryJobStore
@@ -5,6 +7,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from praice.data_handling.collectors import news_collector, price_collector
+from praice.data_handling.db_ops import ta_helpers
 from praice.utils.logging import get_scheduler_logger
 
 # Get the scheduler-specific logger
@@ -59,6 +62,30 @@ def collect_price_data_job():
         logger.error(f"Error in price data collection job: {str(e)}")
 
 
+def calculate_and_store_technical_analysis_job():
+    """
+    Executes the technical analysis calculation and storage job.
+    """
+    logger.info("Starting technical analysis calculation and storage job")
+    try:
+        end_date = datetime.now(
+            tz=pytz.timezone("US/Eastern")
+        ).date()  # get today's date
+        start_date = end_date - timedelta(days=2)  # get the date 2 days ago
+        # Calculate and store technical analysis for all symbols
+        # that have collect_technical_indicators set to True in the SymbolConfig table
+        ta_helpers.calculate_and_store_technical_analysis_for_all_symbols(
+            start_date=start_date, end_date=end_date
+        )
+        logger.info(
+            "Technical analysis calculation and storage job completed successfully"
+        )
+    except Exception as e:
+        logger.error(
+            f"Error in technical analysis calculation and storage job: {str(e)}"
+        )
+
+
 def init_scheduler():
     """
     Initializes and starts the scheduler.
@@ -95,6 +122,15 @@ def init_scheduler():
         id="collect_price_data",
     )
     logger.info("Added job: collect_price_data (runs daily at 6:00 PM ET)")
+
+    scheduler.add_job(
+        calculate_and_store_technical_analysis_job,
+        trigger=CronTrigger(hour=18, minute=30, timezone=pytz.timezone("US/Eastern")),
+        id="calculate_and_store_technical_analysis",
+    )
+    logger.info(
+        "Added job: calculate_and_store_technical_analysis (runs daily at 6:30 PM ET)"
+    )
 
     # Start the scheduler
     scheduler.start()

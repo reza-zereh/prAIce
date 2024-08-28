@@ -29,12 +29,12 @@ price_app = typer.Typer()
 ta_app = typer.Typer()
 fd_app = typer.Typer()
 
-app.add_typer(symbol_app, name="symbol")
-app.add_typer(symbol_config_app, name="symbol-config")
-app.add_typer(scraping_url_app, name="scraping-url")
-app.add_typer(news_app, name="news")
-app.add_typer(price_app, name="price")
-app.add_typer(ta_app, name="ta")
+app.add_typer(symbol_app, name="symbol", help="Symbol commands")
+app.add_typer(symbol_config_app, name="symbol-config", help="Symbol Config commands")
+app.add_typer(scraping_url_app, name="scraping-url", help="Scraping URL commands")
+app.add_typer(news_app, name="news", help="News commands")
+app.add_typer(price_app, name="price", help="Price commands")
+app.add_typer(ta_app, name="ta", help="Technical Analysis commands")
 app.add_typer(fd_app, name="fd", help="Fundamental Data commands")
 
 

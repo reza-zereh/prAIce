@@ -229,7 +229,6 @@ class ScrapingUrl(BaseModel):
         is_active (bool): Indicates if the scraping URL is active.
         created_at (datetime): The timestamp when the scraping URL was created.
         updated_at (datetime): The timestamp when the scraping URL was last updated.
-        last_scraped_at (datetime): The timestamp when the scraping URL was last scraped.
     """
 
     ...

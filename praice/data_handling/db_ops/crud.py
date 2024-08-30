@@ -1,9 +1,10 @@
 from datetime import UTC, date, datetime
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from peewee import DoesNotExist, IntegrityError
 
 from praice.data_handling.models import (
+    FundamentalData,
     HistoricalPrice1D,
     News,
     NewsSymbol,
@@ -779,3 +780,173 @@ def bulk_upsert_technical_analysis(
             upsert_count += 1
 
     return upsert_count
+
+
+# ############################
+# FundamentalData CRUD operations
+# ############################
+
+
+def get_fundamental_data(
+    symbol: Union[Symbol, str],
+    start_date: date = None,
+    end_date: date = None,
+    period: str = None,
+) -> List[FundamentalData]:
+    """
+    Retrieves fundamental data for a given symbol within a specified date range and period.
+
+    Args:
+        symbol (Union[Symbol, str]): The symbol or symbol object for which to retrieve fundamental data.
+        start_date (date, optional): The start date of the date range. Defaults to None.
+        end_date (date, optional): The end date of the date range. Defaults to None.
+        period (str, optional): The period of the fundamental data. Defaults to None.
+
+    Returns:
+        List[FundamentalData]: A list of fundamental data objects matching the specified criteria.
+    """
+    symbol_obj = _ensure_symbol(symbol)
+    query = FundamentalData.select().where(FundamentalData.symbol == symbol_obj)
+
+    if start_date:
+        query = query.where(FundamentalData.date >= start_date)
+    if end_date:
+        query = query.where(FundamentalData.date <= end_date)
+    if period:
+        query = query.where(FundamentalData.period == period)
+
+    return list(query.order_by(FundamentalData.date.desc()))
+
+
+def create_fundamental_data(
+    symbol: Union[Symbol, str], date: date, period: str, data: Dict[str, Any]
+) -> FundamentalData:
+    """
+    Create fundamental data for a given symbol, date, period, and data.
+
+    Parameters:
+        symbol (Union[Symbol, str]): The symbol object or symbol string.
+        date (date): The date of the fundamental data.
+        period (str): The period of the fundamental data.
+        data (Dict[str, Any]): The fundamental data.
+
+    Returns:
+        FundamentalData: The created fundamental data object.
+    """
+    symbol_obj = _ensure_symbol(symbol)
+    return FundamentalData.create(
+        symbol=symbol_obj, date=date, period=period, data=data
+    )
+
+
+def get_or_create_fundamental_data(
+    symbol: Union[Symbol, str], date: date, period: str, data: Dict[str, Any]
+) -> tuple[FundamentalData, bool]:
+    """
+    Get or create fundamental data for a given symbol, date, and period.
+
+    Args:
+        symbol (Union[Symbol, str]): The symbol object or symbol string.
+        date (date): The date of the fundamental data.
+        period (str): The period of the fundamental data.
+        data (Dict[str, Any]): The data to be associated with the fundamental data.
+
+    Returns:
+        tuple[FundamentalData, bool]: A tuple containing the
+            fundamental data object and a boolean indicating whether the data was created or not.
+    """
+    symbol_obj = _ensure_symbol(symbol)
+    return FundamentalData.get_or_create(
+        symbol=symbol_obj, date=date, period=period, defaults={"data": data}
+    )
+
+
+def update_fundamental_data(
+    symbol: Union[Symbol, str], date: date, period: str, data: Dict[str, Any]
+) -> bool:
+    """
+    Update the fundamental data for a given symbol, date, and period.
+
+    Args:
+        symbol (Union[Symbol, str]): The symbol or symbol object.
+        date (date): The date of the fundamental data.
+        period (str): The period of the fundamental data.
+        data (Dict[str, Any]): The updated fundamental data.
+
+    Returns:
+        bool: True if the update was successful, False otherwise.
+    """
+    symbol_obj = _ensure_symbol(symbol)
+    query = FundamentalData.update(data=data).where(
+        (FundamentalData.symbol == symbol_obj)
+        & (FundamentalData.date == date)
+        & (FundamentalData.period == period)
+    )
+    return query.execute() > 0
+
+
+def delete_fundamental_data(
+    symbol: Union[Symbol, str], date: date, period: str
+) -> bool:
+    """
+    Deletes the fundamental data for a given symbol, date, and period.
+
+    Parameters:
+        symbol (Union[Symbol, str]): The symbol or symbol object.
+        date (date): The date of the fundamental data.
+        period (str): The period of the fundamental data.
+
+    Returns:
+        bool: True if the fundamental data is deleted successfully, False otherwise.
+    """
+    symbol_obj = _ensure_symbol(symbol)
+    query = FundamentalData.delete().where(
+        (FundamentalData.symbol == symbol_obj)
+        & (FundamentalData.date == date)
+        & (FundamentalData.period == period)
+    )
+    return query.execute() > 0
+
+
+def bulk_upsert_fundamental_data(
+    symbol: Union[Symbol, str], data: List[Dict[str, Any]]
+) -> int:
+    """
+    Upserts fundamental data in batches for a given symbol.
+
+    Args:
+        symbol (Union[Symbol, str]):
+            The symbol or symbol object for which the fundamental data is being upserted.
+        data (List[Dict[str, Any]]):
+            A list of dictionaries containing the fundamental data to be upserted.
+            Each dictionary should have the following keys: "date", "period", and "data".
+
+    Returns:
+        int: The number of records upserted.
+    """
+    symbol_obj = _ensure_symbol(symbol)
+    upserted_count = 0
+
+    with db.atomic():
+        for batch in helpers.chunked(data, 100):  # Process in batches of 100
+            for item in batch:
+                try:
+                    FundamentalData.insert(
+                        symbol=symbol_obj,
+                        date=item["date"],
+                        period=item["period"],
+                        data=item["data"],
+                    ).on_conflict(
+                        conflict_target=[
+                            FundamentalData.symbol,
+                            FundamentalData.date,
+                            FundamentalData.period,
+                        ],
+                        update={"data": item["data"]},
+                    ).execute()
+                    upserted_count += 1
+                except IntegrityError:
+                    # Handle any integrity errors if necessary
+                    pass
+
+    return upserted_count

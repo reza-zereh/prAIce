@@ -7,6 +7,7 @@ from rich import print as rprint
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
+from praice.data_handling.collectors import fundamental_collector as fdc
 from praice.data_handling.collectors import price_collector
 from praice.data_handling.collectors.news_collector import (
     collect_news_articles,
@@ -26,13 +27,15 @@ scraping_url_app = typer.Typer()
 news_app = typer.Typer()
 price_app = typer.Typer()
 ta_app = typer.Typer()
+fd_app = typer.Typer()
 
-app.add_typer(symbol_app, name="symbol")
-app.add_typer(symbol_config_app, name="symbol-config")
-app.add_typer(scraping_url_app, name="scraping-url")
-app.add_typer(news_app, name="news")
-app.add_typer(price_app, name="price")
-app.add_typer(ta_app, name="ta")
+app.add_typer(symbol_app, name="symbol", help="Symbol commands")
+app.add_typer(symbol_config_app, name="symbol-config", help="Symbol Config commands")
+app.add_typer(scraping_url_app, name="scraping-url", help="Scraping URL commands")
+app.add_typer(news_app, name="news", help="News commands")
+app.add_typer(price_app, name="price", help="Price commands")
+app.add_typer(ta_app, name="ta", help="Technical Analysis commands")
+app.add_typer(fd_app, name="fd", help="Fundamental Data commands")
 
 
 # #################
@@ -339,7 +342,6 @@ def cli_list_scraping_urls(
     table.add_column("URL", style="green")
     table.add_column("Source", style="yellow")
     table.add_column("Is Active", style="blue")
-    table.add_column("Last Scraped", style="red")
 
     for url in urls:
         table.add_row(
@@ -348,7 +350,6 @@ def cli_list_scraping_urls(
             url.url,
             url.source,
             str(url.is_active),
-            str(url.last_scraped_at) if url.last_scraped_at else "Never",
         )
 
     rprint(table)
@@ -685,6 +686,160 @@ def cli_delete_ta(
         )
     except Exception as e:
         rprint(f"[red]Error deleting technical analysis: {str(e)}[/red]")
+
+
+# #################
+# FundamentalData commands
+# #################
+
+
+@fd_app.command("collect")
+def cli_collect_fundamental_data(
+    symbol: str = typer.Argument(
+        ..., help="The stock symbol to collect fundamental data for"
+    ),
+):
+    """
+    Collect and store fundamental data for a given symbol.
+    """
+    try:
+        fdc.collect_and_store_fundamental_data(symbol)
+        rprint(
+            f"[green]Successfully collected and stored fundamental data for {symbol}[/green]"
+        )
+    except Exception as e:
+        rprint(f"[red]Error collecting fundamental data for {symbol}: {str(e)}[/red]")
+
+
+@fd_app.command("collect-all")
+def cli_collect_all_fundamental_data():
+    """
+    Collect and store fundamental data for all symbols with fundamental data collection enabled.
+    """
+    try:
+        fdc.collect_and_store_fundamental_data_for_all_symbols()
+        rprint(
+            "[green]Successfully collected and stored fundamental data for all eligible symbols[/green]"
+        )
+    except Exception as e:
+        rprint(
+            f"[red]Error collecting fundamental data for all symbols: {str(e)}[/red]"
+        )
+
+
+@fd_app.command("delete")
+def cli_delete_fundamental_data(
+    symbol: str = typer.Argument(
+        ..., help="The stock symbol to delete fundamental data for"
+    ),
+    date: str = typer.Option(
+        None, help="The date of the fundamental data to delete (YYYY-MM-DD)"
+    ),
+    period: str = typer.Option(
+        None, help="The period of the fundamental data to delete (annual or quarterly)"
+    ),
+):
+    """
+    Delete fundamental data for a given symbol, optionally filtered by date and period.
+    """
+    try:
+        if date:
+            date = datetime.strptime(date, "%Y-%m-%d").date()
+
+        if period and period not in ["annual", "quarterly"]:
+            raise ValueError("Period must be either 'annual' or 'quarterly'")
+
+        if date and period:
+            deleted = crud.delete_fundamental_data(symbol, date, period)
+        elif date:
+            deleted = crud.delete_fundamental_data(
+                symbol, date, "annual"
+            ) + crud.delete_fundamental_data(symbol, date, "quarterly")
+        elif period:
+            all_data = crud.get_fundamental_data(symbol, period=period)
+            deleted = sum(
+                crud.delete_fundamental_data(symbol, item.date, period)
+                for item in all_data
+            )
+        else:
+            all_data = crud.get_fundamental_data(symbol)
+            deleted = sum(
+                crud.delete_fundamental_data(symbol, item.date, item.period)
+                for item in all_data
+            )
+
+        if deleted:
+            rprint(
+                f"[green]Successfully deleted {deleted} fundamental data record(s) for {symbol}[/green]"
+            )
+        else:
+            rprint(f"[yellow]No fundamental data found to delete for {symbol}[/yellow]")
+    except ValueError as ve:
+        rprint(f"[red]Error: {str(ve)}[/red]")
+    except Exception as e:
+        rprint(f"[red]Error deleting fundamental data for {symbol}: {str(e)}[/red]")
+
+
+@fd_app.command("show")
+def cli_show_fundamental_data(
+    symbol: str = typer.Argument(
+        ..., help="The stock symbol to show fundamental data for"
+    ),
+    date: str = typer.Option(
+        None, help="The date of the fundamental data to show (YYYY-MM-DD)"
+    ),
+    period: str = typer.Option(
+        None, help="The period of the fundamental data to show (annual or quarterly)"
+    ),
+    days: int = typer.Option(
+        365, help="Number of days of fundamental data history to show"
+    ),
+):
+    """
+    Show fundamental data for a given symbol, optionally filtered by date and period.
+    """
+    try:
+        if date:
+            date = datetime.strptime(date, "%Y-%m-%d").date()
+            start_date = date
+            end_date = date
+        else:
+            end_date = datetime.now().date()
+            start_date = end_date - timedelta(days=days)
+
+        if period and period not in ["annual", "quarterly"]:
+            raise ValueError("Period must be either 'annual' or 'quarterly'")
+
+        fundamental_data = crud.get_fundamental_data(
+            symbol, start_date, end_date, period
+        )
+
+        if not fundamental_data:
+            rprint(
+                f"[yellow]No fundamental data found for {symbol} with the given criteria[/yellow]"
+            )
+            return
+
+        table = Table(title=f"Fundamental Data for {symbol}")
+        table.add_column("Date", style="cyan")
+        table.add_column("Period", style="magenta")
+        table.add_column("Data", style="green")
+
+        for item in fundamental_data:
+            table.add_row(
+                str(item.date),
+                item.period,
+                str(item.data)[:100] + "..."
+                if len(str(item.data)) > 100
+                else str(item.data),
+            )
+
+        rprint(table)
+
+    except ValueError as ve:
+        rprint(f"[red]Error: {str(ve)}[/red]")
+    except Exception as e:
+        rprint(f"[red]Error showing fundamental data for {symbol}: {str(e)}[/red]")
 
 
 if __name__ == "__main__":

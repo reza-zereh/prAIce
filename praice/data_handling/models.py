@@ -74,7 +74,7 @@ class Symbol(BaseModel):
     """
 
     id = AutoField(primary_key=True)
-    symbol = CharField(max_length=10, unique=True, index=True)
+    symbol = CharField(max_length=20, unique=True, index=True)
     name = CharField(max_length=255)
     asset_class = CharField(
         max_length=50, choices=[(e.value, e.name) for e in AssetClass]
@@ -229,7 +229,6 @@ class ScrapingUrl(BaseModel):
         is_active (bool): Indicates if the scraping URL is active.
         created_at (datetime): The timestamp when the scraping URL was created.
         updated_at (datetime): The timestamp when the scraping URL was last updated.
-        last_scraped_at (datetime): The timestamp when the scraping URL was last scraped.
     """
 
     ...
@@ -240,7 +239,6 @@ class ScrapingUrl(BaseModel):
     is_active = BooleanField(default=True)
     created_at = DateTimeField(default=lambda: datetime.now(UTC))
     updated_at = DateTimeField(default=lambda: datetime.now(UTC))
-    last_scraped_at = DateTimeField(null=True)
 
     class Meta:
         table_name = "scraping_urls"
@@ -309,6 +307,27 @@ class TechnicalAnalysis(BaseModel):
         return super(TechnicalAnalysis, self).save(*args, **kwargs)
 
 
+class FundamentalData(BaseModel):
+    """
+    Model representing fundamental data for a specific symbol, date, and period.
+
+    Attributes:
+        symbol (ForeignKeyField): The foreign key to the Symbol model.
+        date (DateField): The date of the fundamental data.
+        period (CharField): The period of the fundamental data ('annual' or 'quarterly').
+        data (JSONField): The fundamental data stored as a JSON object.
+    """
+
+    symbol = ForeignKeyField(Symbol, backref="fundamental_data")
+    date = DateField()
+    period = CharField(max_length=10)  # 'annual' or 'quarterly'
+    data = JSONField(default=dict)
+
+    class Meta:
+        table_name = "fundamental_data"
+        indexes = ((("symbol", "date", "period"), True),)
+
+
 def create_tables():
     """
     Creates tables in the database.
@@ -325,6 +344,7 @@ def create_tables():
                 ScrapingUrl,
                 HistoricalPrice1D,
                 TechnicalAnalysis,
+                FundamentalData,
             ]
         )
 

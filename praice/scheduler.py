@@ -6,7 +6,11 @@ from apscheduler.jobstores.memory import MemoryJobStore
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
-from praice.data_handling.collectors import news_collector, price_collector
+from praice.data_handling.collectors import (
+    fundamental_collector,
+    news_collector,
+    price_collector,
+)
 from praice.data_handling.db_ops import ta_helpers
 from praice.utils.logging import get_scheduler_logger
 
@@ -90,6 +94,22 @@ def calculate_and_store_technical_analysis_job():
         )
 
 
+def collect_and_store_fundamental_data_job():
+    """
+    Executes the fundamental data collection and storage job.
+    """
+    logger.info("Starting fundamental data collection and storage job")
+    try:
+        # Collect and store fundamental data for all symbols
+        # that have collect_fundamental_data set to True in the SymbolConfig table
+        fundamental_collector.collect_and_store_fundamental_data_for_all_symbols()
+        logger.info(
+            "Fundamental data collection and storage job completed successfully"
+        )
+    except Exception as e:
+        logger.error(f"Error in fundamental data collection and storage job: {str(e)}")
+
+
 def init_scheduler():
     """
     Initializes and starts the scheduler.
@@ -141,6 +161,19 @@ def init_scheduler():
     )
     logger.info(
         "Added job: calculate_and_store_technical_analysis (runs daily at 6:30 PM ET)"
+    )
+
+    # Collect and store fundamental data monthly on the 1st day of the month at 7:00 PM ET
+    scheduler.add_job(
+        collect_and_store_fundamental_data_job,
+        trigger=CronTrigger(
+            day=1, hour=19, minute=0, timezone=pytz.timezone("US/Eastern")
+        ),
+        id="collect_and_store_fundamental_data",
+    )
+    logger.info(
+        "Added job: collect_and_store_fundamental_data "
+        "(runs monthly on the 1st day of the month at 7:00 PM ET)"
     )
 
     # Start the scheduler

@@ -74,7 +74,7 @@ class Symbol(BaseModel):
     """
 
     id = AutoField(primary_key=True)
-    symbol = CharField(max_length=10, unique=True, index=True)
+    symbol = CharField(max_length=20, unique=True, index=True)
     name = CharField(max_length=255)
     asset_class = CharField(
         max_length=50, choices=[(e.value, e.name) for e in AssetClass]
@@ -240,7 +240,6 @@ class ScrapingUrl(BaseModel):
     is_active = BooleanField(default=True)
     created_at = DateTimeField(default=lambda: datetime.now(UTC))
     updated_at = DateTimeField(default=lambda: datetime.now(UTC))
-    last_scraped_at = DateTimeField(null=True)
 
     class Meta:
         table_name = "scraping_urls"

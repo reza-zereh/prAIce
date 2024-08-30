@@ -342,7 +342,6 @@ def cli_list_scraping_urls(
     table.add_column("URL", style="green")
     table.add_column("Source", style="yellow")
     table.add_column("Is Active", style="blue")
-    table.add_column("Last Scraped", style="red")
 
     for url in urls:
         table.add_row(
@@ -351,7 +350,6 @@ def cli_list_scraping_urls(
             url.url,
             url.source,
             str(url.is_active),
-            str(url.last_scraped_at) if url.last_scraped_at else "Never",
         )
 
     rprint(table)

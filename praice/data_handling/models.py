@@ -11,6 +11,7 @@ from peewee import (
     DateTimeField,
     DecimalField,
     ForeignKeyField,
+    IntegerField,
     Model,
     PostgresqlDatabase,
     TextField,
@@ -186,6 +187,8 @@ class News(BaseModel):
         source (str): The source of the news article.
         published_at (datetime): The date and time when the news article was published.
         scraped_at (datetime): The date and time when the news article was scraped.
+        words_count (int): The number of words in the news article.
+        content_summary (str): The summary of the news article.
     """
 
     id = AutoField(primary_key=True)
@@ -195,6 +198,8 @@ class News(BaseModel):
     source = CharField(max_length=100)
     published_at = DateTimeField(null=True)
     scraped_at = DateTimeField(default=lambda: datetime.now(UTC))
+    words_count = IntegerField(null=True)
+    content_summary = TextField(null=True)
 
     class Meta:
         table_name = "news"
@@ -207,10 +212,14 @@ class NewsSymbol(BaseModel):
     Attributes:
         news (ForeignKeyField): The foreign key to the News model, representing the news article.
         symbol (ForeignKeyField): The foreign key to the Symbol model, representing the symbol.
+        relevance_score (DecimalField): The relevance score of the symbol in the news article.
+        sentiment_score (DecimalField): The sentiment score of the news article.
     """
 
     news = ForeignKeyField(News, backref="news_symbols", on_delete="CASCADE")
     symbol = ForeignKeyField(Symbol, backref="news_symbols", on_delete="CASCADE")
+    relevance_score = DecimalField(max_digits=10, decimal_places=5, null=True)
+    sentiment_score = DecimalField(max_digits=10, decimal_places=5, null=True)
 
     class Meta:
         table_name = "news_symbols"

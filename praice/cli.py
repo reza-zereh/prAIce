@@ -15,6 +15,7 @@ from praice.data_handling.collectors.news_collector import (
 )
 from praice.data_handling.db_ops import crud, news_helpers, ta_helpers
 from praice.data_handling.models import db
+from praice.data_handling.processors import news_processor
 from praice.utils import logging
 
 # Set up logging
@@ -453,6 +454,42 @@ def cli_count_news_by_symbol(
 
     for symbol, count in counts.items():
         table.add_row(symbol, str(count))
+
+    rprint(table)
+
+
+@news_app.command("populate-words-count")
+def cli_populate_words_count(
+    batch_size: int = typer.Option(200, help="Batch size for processing news"),
+):
+    """Populate the words_count field in the News table."""
+    try:
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            transient=True,
+        ) as progress:
+            progress.add_task(description="Processing...", total=None)
+            total_updated = news_processor.populate_words_count(batch_size=batch_size)
+
+        rprint(
+            f"[green]Updated words_count for {total_updated} news articles successfully[/green]"
+        )
+    except Exception as e:
+        rprint(f"[red]Error updating words_count: {str(e)}[/red]")
+
+
+@news_app.command("words-count-stats")
+def cli_words_count_stats():
+    """Show statistics about the words_count field in the News table."""
+    stats = news_helpers.get_words_count_stats()
+
+    table = Table(title="News Words Count Statistics")
+    table.add_column("Statistic", style="cyan")
+    table.add_column("Value", style="magenta")
+
+    for key, value in stats.items():
+        table.add_row(key.replace("_", " ").title(), str(value))
 
     rprint(table)
 

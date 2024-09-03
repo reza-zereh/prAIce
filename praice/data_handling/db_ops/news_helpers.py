@@ -154,3 +154,34 @@ def count_news_by_symbol(n: int = -1) -> Dict[str, Dict[str, int]]:
     return {
         "news_count_by_symbol": {o["symbol"]: o["count"] for o in news_by_symbol[:n]}
     }
+
+
+def get_words_count_stats():
+    """
+    Retrieves statistics about the words_count field in the News table.
+
+    Returns:
+        dict: A dictionary containing the following statistics:
+            - total_news: Total number of news entries
+            - news_with_content: Number of news entries with non-null content
+            - news_with_word_count: Number of news entries with non-null words_count
+            - avg_word_count: Average word count (for entries with non-null words_count)
+            - min_word_count: Minimum word count
+            - max_word_count: Maximum word count
+    """
+    total_news = News.select().count()
+    news_with_content = News.select().where(News.content.is_null(False)).count()
+    news_with_word_count = News.select().where(News.words_count.is_null(False)).count()
+
+    avg_word_count = News.select(fn.AVG(News.words_count)).scalar()
+    min_word_count = News.select(fn.MIN(News.words_count)).scalar()
+    max_word_count = News.select(fn.MAX(News.words_count)).scalar()
+
+    return {
+        "total_news": total_news,
+        "news_with_content": news_with_content,
+        "news_with_word_count": news_with_word_count,
+        "avg_word_count": int(avg_word_count) if avg_word_count else None,
+        "min_word_count": min_word_count,
+        "max_word_count": max_word_count,
+    }

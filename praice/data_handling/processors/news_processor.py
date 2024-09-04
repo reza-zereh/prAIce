@@ -1,7 +1,5 @@
-import re
-
 from praice.data_handling.models import News, db
-from praice.utils.helpers import chunked
+from praice.utils import helpers
 
 
 def populate_words_count(batch_size: int = 200) -> int:
@@ -31,11 +29,10 @@ def populate_words_count(batch_size: int = 200) -> int:
     )
 
     # Process in batches
-    for batch in chunked(iterable=query, chunk_size=batch_size):
+    for batch in helpers.chunked(iterable=query, chunk_size=batch_size):
         with db.atomic():
             for news in batch:
-                # Count words using regex (splits on whitespace)
-                word_count = len(re.findall(r"\w+", news.content))
+                word_count = helpers.count_words(text=news.content)
                 news.words_count = word_count
                 news.save()
                 total_updated += 1

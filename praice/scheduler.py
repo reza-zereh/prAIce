@@ -124,14 +124,14 @@ def populate_news_words_count_job():
         logger.error(f"Error in news words count population job: {str(e)}")
 
 
-def generate_news_summaries_job(limit: int = 5):
+def generate_news_summaries_job(limit: int = 5, model: str = "bart"):
     """
     Executes the news summaries generation job.
     """
     logger.info("Starting news summaries generation job")
     try:
         # Generate content summaries for News entries with words_count greater than or equal to 300
-        news_processor.populate_content_summary(limit=limit)
+        news_processor.populate_content_summary(limit=limit, model=model)
         logger.info("News summaries generation job completed successfully")
     except Exception as e:
         logger.error(f"Error in news summaries generation job: {str(e)}")
@@ -208,7 +208,7 @@ def init_scheduler():
         generate_news_summaries_job,
         trigger="interval",
         minutes=15,
-        kwargs={"limit": 5},
+        kwargs={"limit": 5, "model": "bart"},
         id="generate_news_summaries",
     )
     logger.info("Added job: generate_news_summaries")

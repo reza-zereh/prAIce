@@ -38,7 +38,7 @@ def populate_words_count(batch_size: int = 200) -> int:
 
 
 def populate_content_summary(
-    news_min_words_count=300, summary_max_tokens=200, limit=5
+    news_min_words_count=300, summary_max_tokens=200, limit=5, model="bart"
 ) -> int:
     """
     Populates the content summary of news entries.
@@ -47,11 +47,12 @@ def populate_content_summary(
         news_min_words_count (int): The minimum number of words required for a news entry to be considered.
         summary_max_tokens (int): The maximum number of tokens to include in the summary.
         limit (int): The maximum number of news entries to process.
+        model (str): The summarization model to use. Defaults to "bart".
 
     Returns:
         int: The total number of news entries whose content summary was updated.
     """
-    summarizer = SummarizerFactory.get_summarizer("bart")
+    summarizer = SummarizerFactory.get_summarizer(model)
     total_updated = 0
 
     # Query to get N news entries with words_count greater than or equal to news_min_words_count

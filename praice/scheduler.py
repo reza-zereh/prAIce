@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import time
 
 import pytz
 from apscheduler.executors.pool import ThreadPoolExecutor
@@ -6,6 +7,7 @@ from apscheduler.jobstores.memory import MemoryJobStore
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
+from praice.config import settings
 from praice.data_handling.collectors import (
     fundamental_collector,
     news_collector,
@@ -130,9 +132,17 @@ def generate_news_summaries_job(limit: int = 5, model: str = "bart"):
     """
     logger.info("Starting news summaries generation job")
     try:
+        start = time.perf_counter()
         # Generate content summaries for News entries with words_count greater than or equal to 300
-        news_processor.populate_content_summary(limit=limit, model=model)
-        logger.info("News summaries generation job completed successfully")
+        n_generated_summary, news_ids = news_processor.populate_content_summary(
+            limit=limit, model=model
+        )
+        total_time = time.perf_counter() - start
+        logger.info(
+            "News summaries generation job completed successfully for "
+            f"{n_generated_summary} entries in {total_time:.2f} seconds. "
+            f"News IDs: {news_ids}"
+        )
     except Exception as e:
         logger.error(f"Error in news summaries generation job: {str(e)}")
 
@@ -203,12 +213,12 @@ def init_scheduler():
         "(runs monthly on the 1st day of the month at 7:00 PM ET)"
     )
 
-    # Generate news summaries every 15 minutes for the 5 news entries
+    # Generate news summaries every 5 minutes for the 5 news entries
     scheduler.add_job(
         generate_news_summaries_job,
         trigger="interval",
-        minutes=15,
-        kwargs={"limit": 5, "model": "bart"},
+        minutes=5,
+        kwargs={"limit": 5, "model": settings.SUMMARIZATION_MODEL},
         id="generate_news_summaries",
     )
     logger.info("Added job: generate_news_summaries")

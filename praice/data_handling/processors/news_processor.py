@@ -1,3 +1,5 @@
+from typing import List, Tuple
+
 from praice.data_handling.models import News, db
 from praice.libs.summarizers import SummarizerFactory
 from praice.utils import helpers
@@ -39,7 +41,7 @@ def populate_words_count(batch_size: int = 200) -> int:
 
 def populate_content_summary(
     news_min_words_count=300, summary_max_tokens=200, limit=5, model="bart"
-) -> int:
+) -> Tuple[int, List[int]]:
     """
     Populates the content summary of news entries.
 
@@ -50,10 +52,11 @@ def populate_content_summary(
         model (str): The summarization model to use. Defaults to "bart".
 
     Returns:
-        int: The total number of news entries whose content summary was updated.
+        Tuple[int, List[int]]: A tuple containing the total number of entries updated and a list of news IDs.
     """
     summarizer = SummarizerFactory.get_summarizer(model)
     total_updated = 0
+    news_ids = []
 
     # Query to get N news entries with words_count greater than or equal to news_min_words_count
     query = News.select().where(News.words_count >= news_min_words_count).limit(limit)
@@ -62,6 +65,7 @@ def populate_content_summary(
         summary = summarizer.summarize(text=news.content, max_tokens=summary_max_tokens)
         news.content_summary = summary
         news.save()
+        news_ids.append(news.id)
         total_updated += 1
 
-    return total_updated
+    return (total_updated, news_ids)

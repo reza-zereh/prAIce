@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     DB_USERNAME: str
     DB_PASSWORD: str
 
+    # LLMs settings
+    SUMMARIZATION_MODEL: str
+    ANTHROPIC_API_KEY: str
+    OPENAI_API_KEY: str
+
     # Other settings
     LOG_LEVEL: str = Field("INFO", description="Logging level")
 

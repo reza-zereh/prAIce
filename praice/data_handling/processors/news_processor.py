@@ -58,8 +58,16 @@ def populate_content_summary(
     total_updated = 0
     news_ids = []
 
-    # Query to get N news entries with words_count greater than or equal to news_min_words_count
-    query = News.select().where(News.words_count >= news_min_words_count).limit(limit)
+    # Query to get News entries with words_count greater than or equal to
+    # news_min_words_count and null content_summary
+    query = (
+        News.select()
+        .where(
+            (News.words_count >= news_min_words_count)
+            & (News.content_summary.is_null(True))
+        )
+        .limit(limit)
+    )
 
     for news in query:
         summary = summarizer.summarize(text=news.content, max_tokens=summary_max_tokens)

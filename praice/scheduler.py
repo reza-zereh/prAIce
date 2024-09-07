@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import time
 
 import pytz
 from apscheduler.executors.pool import ThreadPoolExecutor
@@ -6,12 +7,14 @@ from apscheduler.jobstores.memory import MemoryJobStore
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
+from praice.config import settings
 from praice.data_handling.collectors import (
     fundamental_collector,
     news_collector,
     price_collector,
 )
 from praice.data_handling.db_ops import ta_helpers
+from praice.data_handling.processors import news_processor
 from praice.utils.logging import get_scheduler_logger
 
 # Get the scheduler-specific logger
@@ -110,6 +113,40 @@ def collect_and_store_fundamental_data_job():
         logger.error(f"Error in fundamental data collection and storage job: {str(e)}")
 
 
+def populate_news_words_count_job():
+    """
+    Executes the news words count population job.
+    """
+    logger.info("Starting news words count population job")
+    try:
+        # Populate the words_count field for News entries with non-null content
+        news_processor.populate_words_count()
+        logger.info("News words count population job completed successfully")
+    except Exception as e:
+        logger.error(f"Error in news words count population job: {str(e)}")
+
+
+def generate_news_summaries_job(limit: int = 5, model: str = "bart"):
+    """
+    Executes the news summaries generation job.
+    """
+    logger.info("Starting news summaries generation job")
+    try:
+        start = time.perf_counter()
+        # Generate content summaries for News entries with words_count greater than or equal to 300
+        n_generated_summary, news_ids = news_processor.populate_content_summary(
+            limit=limit, model=model
+        )
+        total_time = time.perf_counter() - start
+        logger.info(
+            "News summaries generation job completed successfully for "
+            f"{n_generated_summary} entries in {total_time:.2f} seconds. "
+            f"News IDs: {news_ids}"
+        )
+    except Exception as e:
+        logger.error(f"Error in news summaries generation job: {str(e)}")
+
+
 def init_scheduler():
     """
     Initializes and starts the scheduler.
@@ -175,6 +212,24 @@ def init_scheduler():
         "Added job: collect_and_store_fundamental_data "
         "(runs monthly on the 1st day of the month at 7:00 PM ET)"
     )
+
+    # Generate news summaries every 5 minutes for the 5 news entries
+    scheduler.add_job(
+        generate_news_summaries_job,
+        trigger="interval",
+        minutes=5,
+        kwargs={"limit": 5, "model": settings.SUMMARIZATION_MODEL},
+        id="generate_news_summaries",
+    )
+    logger.info("Added job: generate_news_summaries")
+
+    # Populate news words count once every 24 hours
+    scheduler.add_job(
+        populate_news_words_count_job,
+        trigger=CronTrigger(hour=0, minute=0),
+        id="populate_news_words_count",
+    )
+    logger.info("Added job: populate_news_words_count (runs daily at 12:00 AM)")
 
     # Start the scheduler
     scheduler.start()

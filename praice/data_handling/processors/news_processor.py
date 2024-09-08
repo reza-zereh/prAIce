@@ -77,7 +77,6 @@ def populate_content_summary(
     for news in query:
         logger.info(f"Generating summary for News entry with ID: {news.id}")
         summary = summarizer.summarize(text=news.content, max_tokens=summary_max_tokens)
-        logger.info("Updating News entry")
         news.content_summary = summary
         news.save()
         news_ids.append(news.id)

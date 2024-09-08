@@ -29,7 +29,7 @@ class YahooFinanceScraper(NewsScraper):
         news_list = []
 
         for news_item in soup.find_all("li", class_="stream-item yf-7rcxn"):
-            headline_tag = news_item.find("h3", class_="clamp yf-1044anq")
+            headline_tag = news_item.find("h3", class_="clamp yf-1e4au4k")
             if headline_tag:
                 headline = headline_tag.text.strip()
                 link_tag = news_item.find("a", href=True)
@@ -39,7 +39,6 @@ class YahooFinanceScraper(NewsScraper):
                         link = f"https://finance.yahoo.com{link}"
                     news_list.append({"headline": headline, "link": link})
 
-        logger.info(f"Scraped {len(news_list)} headlines from: {url}")
         return news_list
 
     def scrape_article(self, url: str) -> Dict[str, str]:

@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-import time
 
 import pytz
 from apscheduler.executors.pool import ThreadPoolExecutor
@@ -15,6 +14,7 @@ from praice.data_handling.collectors import (
 )
 from praice.data_handling.db_ops import ta_helpers
 from praice.data_handling.processors import news_processor
+from praice.utils.helpers import log_execution_time
 from praice.utils.logging import get_scheduler_logger
 
 # Get the scheduler-specific logger
@@ -126,22 +126,20 @@ def populate_news_words_count_job():
         logger.error(f"Error in news words count population job: {str(e)}")
 
 
+@log_execution_time
 def generate_news_summaries_job(limit: int = 5, model: str = "bart"):
     """
     Executes the news summaries generation job.
     """
     logger.info("Starting news summaries generation job")
     try:
-        start = time.perf_counter()
         # Generate content summaries for News entries with words_count greater than or equal to 300
         n_generated_summary, news_ids = news_processor.populate_content_summary(
             limit=limit, model=model
         )
-        total_time = time.perf_counter() - start
         logger.info(
             "News summaries generation job completed successfully for "
-            f"{n_generated_summary} entries in {total_time:.2f} seconds. "
-            f"News IDs: {news_ids}"
+            f"{n_generated_summary} entries. News IDs: {news_ids}"
         )
     except Exception as e:
         logger.error(f"Error in news summaries generation job: {str(e)}")

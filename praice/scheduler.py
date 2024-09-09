@@ -219,11 +219,11 @@ def init_scheduler():
     )
     logger.info("Added job: populate_news_words_count (runs daily at 12:00 AM)")
 
-    # Generate news summaries every 5 minutes for the 5 news entries
+    # Generate news summaries every 10 minutes for the 5 news entries
     scheduler.add_job(
         generate_news_summaries_job,
         trigger="interval",
-        minutes=5,
+        minutes=10,
         kwargs={"limit": 5, "model": settings.SUMMARIZATION_MODEL},
         id="generate_news_summaries",
     )

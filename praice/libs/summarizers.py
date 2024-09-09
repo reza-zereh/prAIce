@@ -2,10 +2,9 @@ import os
 from abc import ABC, abstractmethod
 from typing import Literal
 
-import torch
+import requests
 from anthropic import Anthropic
 from openai import OpenAI
-from transformers import pipeline
 
 
 class Summarizer(ABC):
@@ -100,35 +99,41 @@ class OpenAISummarizer(Summarizer):
 
 class HuggingFaceSummarizer(Summarizer):
     """
-    Summarizer class that uses the Hugging Face Transformers library.
+    Initializes a HuggingFaceSummarizer object.
+
+    Args:
+        model_name (str, optional): The name of the Hugging Face model to use for summarization.
+            Defaults to "facebook/bart-large-cnn".
     """
 
-    def __init__(self, model_name: str):
-        self.pipeline = pipeline(
-            "summarization",
-            model=model_name,
-            device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
+    def __init__(self, model_name: str = "facebook/bart-large-cnn"):
+        self.model_name = model_name
+        self.api_url = (
+            "http://inference_api:8000/summarize"
+            # "http://0.0.0.0:8000/summarize"
         )
 
     def summarize(self, text: str, max_tokens: int) -> str:
         """
-        Summarizes the input text using the Hugging Face Transformers library.
+        Summarizes the given text using the Hugging Face model.
 
-        Parameters:
-            text (str): The input text to be summarized.
+        Args:
+            text (str): The text to be summarized.
             max_tokens (int): The maximum number of tokens in the summary.
 
         Returns:
             str: The summarized text.
         """
-        results = self.pipeline(
-            text[:3500],
-            max_length=max_tokens,
-            min_length=max_tokens,
-            do_sample=False,
+        response = requests.post(
+            self.api_url,
+            json={
+                "text": text,
+                "max_tokens": max_tokens,
+                "model_name": self.model_name,
+            },
         )
-
-        return results[0]["summary_text"]
+        response.raise_for_status()
+        return response.json()["summary"]
 
 
 class SummarizerFactory:

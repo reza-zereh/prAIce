@@ -19,6 +19,6 @@ services:
     image: praice_inference_api
     container_name: praice_inference_api_cnt
     ports:
-      - "8000:8000"
+      - "8001:8001"
     volumes:
       - ~/.cache/huggingface/hub:/root/.cache/huggingface/hub

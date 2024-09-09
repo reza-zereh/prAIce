@@ -6,6 +6,8 @@ import requests
 from anthropic import Anthropic
 from openai import OpenAI
 
+from praice.config import settings
+
 
 class Summarizer(ABC):
     """
@@ -108,10 +110,7 @@ class HuggingFaceSummarizer(Summarizer):
 
     def __init__(self, model_name: str = "facebook/bart-large-cnn"):
         self.model_name = model_name
-        self.api_url = (
-            "http://inference_api:8000/summarize"
-            # "http://0.0.0.0:8000/summarize"
-        )
+        self.api_url = settings.HUGGINGFACE_SUMMARIZER_URL
 
     def summarize(self, text: str, max_tokens: int) -> str:
         """

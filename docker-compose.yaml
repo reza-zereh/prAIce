@@ -10,3 +10,15 @@ services:
       - .env
     volumes:
       - ./logs:/app/logs
+
+  inference_api:
+    build:
+      context: ./inference_api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    image: praice_inference_api
+    container_name: praice_inference_api_cnt
+    ports:
+      - "8000:8000"
+    volumes:
+      - ~/.cache/huggingface/hub:/root/.cache/huggingface/hub

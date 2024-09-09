@@ -6,7 +6,7 @@ from apscheduler.jobstores.memory import MemoryJobStore
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
-# from praice.config import settings
+from praice.config import settings
 from praice.data_handling.collectors import (
     fundamental_collector,
     news_collector,
@@ -219,15 +219,15 @@ def init_scheduler():
     )
     logger.info("Added job: populate_news_words_count (runs daily at 12:00 AM)")
 
-    # # Generate news summaries every 5 minutes for the 5 news entries
-    # scheduler.add_job(
-    #     generate_news_summaries_job,
-    #     trigger="interval",
-    #     minutes=2,
-    #     kwargs={"limit": 5, "model": settings.SUMMARIZATION_MODEL},
-    #     id="generate_news_summaries",
-    # )
-    # logger.info("Added job: generate_news_summaries")
+    # Generate news summaries every 5 minutes for the 5 news entries
+    scheduler.add_job(
+        generate_news_summaries_job,
+        trigger="interval",
+        minutes=5,
+        kwargs={"limit": 5, "model": settings.SUMMARIZATION_MODEL},
+        id="generate_news_summaries",
+    )
+    logger.info("Added job: generate_news_summaries")
 
     # Start the scheduler
     scheduler.start()
@@ -244,6 +244,3 @@ if __name__ == "__main__":
     except (KeyboardInterrupt, SystemExit):
         scheduler.shutdown()
         logger.info("Scheduler shut down")
-
-    # for i in range(3):
-    #     generate_news_summaries_job()

@@ -37,19 +37,12 @@ def log_execution_time(func):
         """
         Wrapper function that logs the execution time of the decorated function.
         """
-        job_name = func.__name__
-        logger.info(f"Starting job: {job_name}")
+        func_name = func.__name__
         start_time = time.time()
-        try:
-            result = func(*args, **kwargs)
-            logger.info(f"Job {job_name} completed successfully")
-            return result
-        except Exception as e:
-            logger.error(f"Job {job_name} failed with error: {str(e)}")
-            raise
-        finally:
-            end_time = time.time()
-            duration = end_time - start_time
-            logger.info(f"Job {job_name} took {duration:.2f} seconds to execute")
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        duration = end_time - start_time
+        logger.info(f"Function {func_name} took {duration:.2f} seconds to execute")
+        return result
 
     return wrapper

@@ -56,15 +56,13 @@ def populate_content_summary(
     Returns:
         Tuple[int, List[int]]: A tuple containing the total number of entries updated and a list of news IDs.
     """
-    logger.info("Creating summarizer")
     summarizer = SummarizerFactory.get_summarizer(model)
-    logger.info(f"Summarizer created: {summarizer}")
+    logger.info(f"Using summarization model: {model}")
     total_updated = 0
     news_ids = []
 
     # Query to get News entries with words_count greater than or equal to
     # news_min_words_count and null content_summary
-    logger.info("Querying News entries")
     query = (
         News.select()
         .where(

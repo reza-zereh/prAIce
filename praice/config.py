@@ -28,6 +28,7 @@ class Settings(BaseSettings):
 
     # LLMs settings
     SUMMARIZATION_MODEL: str
+    HUGGINGFACE_SUMMARIZER_URL: str  # URL for the Hugging Face summarizer external API
     ANTHROPIC_API_KEY: str
     OPENAI_API_KEY: str
 

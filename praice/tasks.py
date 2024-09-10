@@ -1,12 +1,8 @@
 from datetime import datetime, timedelta
 
 import pytz
-from apscheduler.executors.pool import ThreadPoolExecutor
-from apscheduler.jobstores.memory import MemoryJobStore
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.cron import CronTrigger
+from celery import shared_task
 
-from praice.config import settings
 from praice.data_handling.collectors import (
     fundamental_collector,
     news_collector,
@@ -14,22 +10,13 @@ from praice.data_handling.collectors import (
 )
 from praice.data_handling.db_ops import ta_helpers
 from praice.data_handling.processors import news_processor
-from praice.utils.helpers import log_execution_time
 from praice.utils.logging import get_scheduler_logger
 
 # Get the scheduler-specific logger
 logger = get_scheduler_logger()
 
-# Set up the job stores
-jobstores = {"default": MemoryJobStore()}
 
-# Set up the executor
-executors = {"default": ThreadPoolExecutor(20)}
-
-# Create the scheduler
-scheduler = BackgroundScheduler(jobstores=jobstores, executors=executors)
-
-
+@shared_task
 def collect_headlines_by_source_job(source: str):
     """
     Collects headlines from a specific source.
@@ -46,6 +33,7 @@ def collect_headlines_by_source_job(source: str):
         logger.error(f"Error in headline collection job: {str(e)}")
 
 
+@shared_task
 def collect_articles_job():
     """
     Executes the article collection job.
@@ -59,6 +47,7 @@ def collect_articles_job():
         logger.error(f"Error in article collection job: {str(e)}")
 
 
+@shared_task
 def collect_price_data_job():
     """
     Executes the price data collection job.
@@ -73,6 +62,7 @@ def collect_price_data_job():
         logger.error(f"Error in price data collection job: {str(e)}")
 
 
+@shared_task
 def calculate_and_store_technical_analysis_job():
     """
     Executes the technical analysis calculation and storage job.
@@ -97,6 +87,7 @@ def calculate_and_store_technical_analysis_job():
         )
 
 
+@shared_task
 def collect_and_store_fundamental_data_job():
     """
     Executes the fundamental data collection and storage job.
@@ -113,6 +104,7 @@ def collect_and_store_fundamental_data_job():
         logger.error(f"Error in fundamental data collection and storage job: {str(e)}")
 
 
+@shared_task
 def populate_news_words_count_job():
     """
     Executes the news words count population job.
@@ -126,7 +118,7 @@ def populate_news_words_count_job():
         logger.error(f"Error in news words count population job: {str(e)}")
 
 
-@log_execution_time
+@shared_task
 def generate_news_summaries_job(limit: int = 5, model: str = "bart"):
     """
     Executes the news summaries generation job.
@@ -143,104 +135,3 @@ def generate_news_summaries_job(limit: int = 5, model: str = "bart"):
         )
     except Exception as e:
         logger.error(f"Error in news summaries generation job: {str(e)}")
-
-
-def init_scheduler():
-    """
-    Initializes and starts the scheduler.
-
-    Jobs:
-        - collect_headlines_by_source_job: Collects headlines from the 'yfinance' source.
-        - collect_articles_job: Collects news articles.
-        - collect_price_data_job: Collects price data.
-        - calculate_and_store_technical_analysis_job: Calculates and stores technical analysis.
-
-    Returns:
-        None
-    """
-
-    # Add jobs to the scheduler
-
-    # Collect headlines from the 'yfinance' source every 80 minutes
-    scheduler.add_job(
-        collect_headlines_by_source_job,
-        trigger="interval",
-        minutes=80,
-        id="collect_yfinance_headlines",
-        kwargs={"source": "yfinance"},
-    )
-    logger.info("Added job: collect_yfinance_headlines")
-
-    # Collect news articles every 170 minutes
-    scheduler.add_job(
-        collect_articles_job,
-        trigger="interval",
-        minutes=170,
-        id="collect_articles",
-    )
-    logger.info("Added job: collect_articles")
-
-    # Collect price data daily at 6:00 PM ET
-    scheduler.add_job(
-        collect_price_data_job,
-        trigger=CronTrigger(hour=18, minute=0, timezone=pytz.timezone("US/Eastern")),
-        id="collect_price_data",
-    )
-    logger.info("Added job: collect_price_data (runs daily at 6:00 PM ET)")
-
-    # Calculate and store technical analysis daily at 6:30 PM ET
-    scheduler.add_job(
-        calculate_and_store_technical_analysis_job,
-        trigger=CronTrigger(hour=18, minute=30, timezone=pytz.timezone("US/Eastern")),
-        id="calculate_and_store_technical_analysis",
-    )
-    logger.info(
-        "Added job: calculate_and_store_technical_analysis (runs daily at 6:30 PM ET)"
-    )
-
-    # Collect and store fundamental data monthly on the 1st day of the month at 7:00 PM ET
-    scheduler.add_job(
-        collect_and_store_fundamental_data_job,
-        trigger=CronTrigger(
-            day=1, hour=19, minute=0, timezone=pytz.timezone("US/Eastern")
-        ),
-        id="collect_and_store_fundamental_data",
-    )
-    logger.info(
-        "Added job: collect_and_store_fundamental_data "
-        "(runs monthly on the 1st day of the month at 7:00 PM ET)"
-    )
-
-    # Populate news words count once every 24 hours
-    scheduler.add_job(
-        populate_news_words_count_job,
-        trigger=CronTrigger(hour=0, minute=0),
-        id="populate_news_words_count",
-    )
-    logger.info("Added job: populate_news_words_count (runs daily at 12:00 AM)")
-
-    # Generate news summaries every 10 minutes for the 5 news entries
-    scheduler.add_job(
-        generate_news_summaries_job,
-        trigger="interval",
-        minutes=10,
-        kwargs={"limit": 5, "model": settings.SUMMARIZATION_MODEL},
-        id="generate_news_summaries",
-    )
-    logger.info("Added job: generate_news_summaries")
-
-    # Start the scheduler
-    scheduler.start()
-    logger.info("Scheduler started")
-
-
-if __name__ == "__main__":
-    init_scheduler()
-
-    try:
-        # Keep the script running
-        while True:
-            pass
-    except (KeyboardInterrupt, SystemExit):
-        scheduler.shutdown()
-        logger.info("Scheduler shut down")

@@ -1,6 +1,6 @@
 anthropic==0.34.2
-apscheduler==3.10.4
 beautifulsoup4==4.12.3
+celery==5.4.0
 loguru==0.7.2
 numpy==1.26.4
 openai==1.43.0
@@ -10,6 +10,7 @@ psycopg2-binary==2.9.9
 pydantic-settings==2.4.0
 pydantic==2.8.2
 pytz==2024.1
+redis==5.0.8
 requests==2.32.3
 rich==13.7.1
 TA-Lib==0.4.32

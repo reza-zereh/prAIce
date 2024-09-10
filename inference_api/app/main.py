@@ -35,7 +35,7 @@ async def summarize(request: SummarizationRequest):
     """
     summarizer = get_summarizer(request.model_name)
     summary = summarizer(
-        request.text[:3500],
+        request.text[:3400],
         max_length=request.max_tokens,
         min_length=request.max_tokens,
         do_sample=False,

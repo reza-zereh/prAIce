@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str
     OPENAI_API_KEY: str
 
+    # Celery settings
+    CELERY_BROKER_URL: str = "redis://redis:6379/0"
+    CELERY_RESULT_BACKEND: str = "redis://redis:6379/0"
+
     # Other settings
     LOG_LEVEL: str = Field("INFO", description="Logging level")
 

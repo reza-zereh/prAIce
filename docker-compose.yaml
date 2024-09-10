@@ -1,16 +1,4 @@
 services:
-  scheduler:
-    build:
-      context: .
-      dockerfile: ./scheduler.Dockerfile
-    restart: unless-stopped
-    image: praice_scheduler
-    container_name: praice_scheduler_cnt
-    env_file:
-      - .env
-    volumes:
-      - ./logs:/app/logs
-
   inference_api:
     build:
       context: ./inference_api
@@ -22,3 +10,33 @@ services:
       - "8001:8001"
     volumes:
       - ~/.cache/huggingface/hub:/root/.cache/huggingface/hub
+
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    container_name: redis_cnt
+    ports:
+      - "6379:6379"
+
+
+  celery:
+    build:
+      context: ./praice
+      dockerfile: celery.Dockerfile
+    restart: unless-stopped
+    image: praice_celery
+    container_name: praice_celery_cnt
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
+    command: >
+      sh -c "
+        celery -A praice.celery_config:app worker --loglevel=info &
+        celery -A praice.celery_config:app beat --loglevel=info &
+        wait
+      "
+    depends_on:
+      - redis
+      - inference_api

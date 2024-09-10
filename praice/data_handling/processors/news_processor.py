@@ -57,7 +57,6 @@ def populate_content_summary(
         Tuple[int, List[int]]: A tuple containing the total number of entries updated and a list of news IDs.
     """
     summarizer = SummarizerFactory.get_summarizer(model)
-    logger.info(f"Using summarization model: {model}")
     total_updated = 0
     news_ids = []
 

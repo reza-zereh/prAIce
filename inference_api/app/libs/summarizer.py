@@ -63,7 +63,7 @@ def summarize(text, model_name, max_tokens, max_length=3500):
         return summarizer(
             text[:max_length],
             max_length=max_tokens,
-            min_length=max_tokens,
+            min_length=max_tokens // 2,
             do_sample=False,
         )[0]["summary_text"]
     except IndexError:

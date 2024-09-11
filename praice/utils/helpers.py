@@ -2,7 +2,10 @@ import re
 import time
 from functools import wraps
 
+import requests
 from loguru import logger
+
+from praice.config import settings
 
 
 def chunked(iterable, chunk_size):
@@ -49,3 +52,30 @@ def log_execution_time(func):
         return result
 
     return wrapper
+
+
+def calculate_sentiment_score(text: str, model_name: str = "ProsusAI/finbert"):
+    """
+    Calculates the sentiment score of the given text using the specified model using an external API.
+
+    Args:
+        text (str): The text for which sentiment score needs to be calculated.
+        model_name (str, optional): The name of the model to be used for sentiment analysis.
+            Defaults to "ProsusAI/finbert".
+
+    Returns:
+        float: The sentiment score of the text in the range [-1, 1].
+
+    Raises:
+        HTTPError: If there is an error in the HTTP request to the sentiment API.
+    """
+    api_url = settings.SENTIMENT_API_URL
+    response = requests.post(
+        api_url,
+        json={
+            "text": text,
+            "model_name": model_name,
+        },
+    )
+    response.raise_for_status()
+    return response.json()["sentiment_score"]

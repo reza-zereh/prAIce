@@ -43,3 +43,28 @@ def get_summarizer(model_name):
         Summarizer: An instance of the Summarizer class.
     """
     return Summarizer.get_instance(model_name)
+
+
+def summarize(text, model_name, max_tokens, max_length=3500):
+    """
+    Summarizes the given text using the specified model.
+
+    Parameters:
+        text (str): The input text to be summarized.
+        model_name (str): The name of the model to use for summarization.
+        max_tokens (int): The maximum number of tokens in the generated summary.
+        max_length (int): The maximum length of the input text.
+
+    Returns:
+        str: The summary of the input text.
+    """
+    summarizer = get_summarizer(model_name)
+    try:
+        return summarizer(
+            text[:max_length],
+            max_length=max_tokens,
+            min_length=max_tokens,
+            do_sample=False,
+        )[0]["summary_text"]
+    except IndexError:
+        return summarize(text, model_name, max_tokens, max_length - 100)

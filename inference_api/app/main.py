@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-from .models import get_summarizer
+from .libs.summarizer import summarize
 
 app = FastAPI()
 
@@ -18,12 +18,12 @@ class SummarizationRequest(BaseModel):
     """
 
     text: str
-    max_tokens: int
+    max_tokens: int = 200
     model_name: str = "facebook/bart-large-cnn"
 
 
 @app.post("/summarize")
-async def summarize(request: SummarizationRequest):
+async def summarize_route(request: SummarizationRequest):
     """
     Summarizes the given text using a specified model.
 
@@ -33,11 +33,7 @@ async def summarize(request: SummarizationRequest):
     Returns:
         dict: A dictionary containing the summary of the text.
     """
-    summarizer = get_summarizer(request.model_name)
-    summary = summarizer(
-        request.text[:3400],
-        max_length=request.max_tokens,
-        min_length=request.max_tokens,
-        do_sample=False,
+    summary = summarize(
+        text=request.text, model_name=request.model_name, max_tokens=request.max_tokens
     )
-    return {"summary": summary[0]["summary_text"]}
+    return {"summary": summary}

@@ -80,3 +80,33 @@ def populate_content_summary(
         total_updated += 1
 
     return (total_updated, news_ids)
+
+
+def populate_sentiment_score(limit=5) -> Tuple[int, List[int]]:
+    """
+    Populates the sentiment score for news articles that have a content summary but do not have a sentiment score.
+
+    Args:
+        limit (int): The maximum number of news articles to process. Defaults to 5.
+
+    Returns:
+        Tuple[int, List[int]]: A tuple containing the total number of news articles updated and a list of news IDs that were updated.
+    """
+    total_updated = 0
+    news_ids = []
+    query = (
+        News.select()
+        .where(
+            (News.content_summary.is_null(False)) & (News.sentiment_score.is_null(True))
+        )
+        .limit(limit)
+    )
+
+    for news in query:
+        sentiment_score = helpers.calculate_sentiment_score(text=news.content_summary)
+        news.sentiment_score = sentiment_score
+        news.save()
+        news_ids.append(news.id)
+        total_updated += 1
+
+    return (total_updated, news_ids)

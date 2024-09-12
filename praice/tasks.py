@@ -135,3 +135,22 @@ def generate_news_summaries_job(limit: int = 5, model: str = "bart"):
         )
     except Exception as e:
         logger.error(f"Error in news summaries generation job: {str(e)}")
+
+
+@shared_task
+def populate_sentiment_scores_job(limit: int = 5):
+    """
+    Executes the sentiment scores calculation job.
+    """
+    logger.info("Starting sentiment scores calculation job")
+    try:
+        # Calculate sentiment scores for News entries with content_summary but no sentiment_score
+        n_calculated_scores, news_ids = news_processor.populate_sentiment_score(
+            limit=limit
+        )
+        logger.info(
+            "Sentiment scores calculation job completed successfully for "
+            f"{n_calculated_scores} entries. News IDs: {news_ids}"
+        )
+    except Exception as e:
+        logger.error(f"Error in sentiment scores calculation job: {str(e)}")

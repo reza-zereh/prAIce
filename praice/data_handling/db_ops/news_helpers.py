@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Union
+from typing import Dict, List, Union
 
 from peewee import ModelSelect, fn
 
@@ -82,28 +82,6 @@ def search_news(
     return search_query if lazy else list(search_query)
 
 
-def get_news_stats() -> Dict[str, Any]:
-    """
-    Retrieves statistics about news.
-
-    Returns:
-        A dictionary containing the following information:
-        - total_news (int): The total number of news.
-        - news_by_source (List[Dict[str, Union[str, int]]]): A list of dictionaries representing the count of news by source.
-          Each dictionary contains the following information:
-          - source (str): The source of the news.
-          - count (int): The number of news from the source.
-    """
-    total_news = News.select().count()
-    news_by_source = list(
-        News.select(News.source, fn.COUNT(News.id).alias("count"))
-        .group_by(News.source)
-        .dicts()
-    )
-
-    return {"total_news": total_news, "news_by_source": news_by_source}
-
-
 def get_news_with_null_content(limit: int = 50) -> List[News]:
     """
     Retrieve a list of news articles with null content.
@@ -184,4 +162,39 @@ def get_words_count_stats():
         "avg_word_count": int(avg_word_count) if avg_word_count else None,
         "min_word_count": min_word_count,
         "max_word_count": max_word_count,
+    }
+
+
+def get_news_stats() -> Dict[str, int]:
+    """
+    Retrieves statistics about the news data.
+
+    Returns:
+        dict: A dictionary containing the following statistics:
+            - total_news (int): The total number of news articles.
+            - news_with_content (int): The number of news articles with content.
+            - news_with_word_count (int): The number of news articles with word count.
+            - news_with_words_count_gte_300 (int): The number of news articles with word count greater than or equal to 300.
+            - news_with_content_summary (int): The number of news articles with content summary.
+            - news_with_sentiment_score (int): The number of news articles with sentiment score.
+    """
+
+    total_news = News.select().count()
+    news_with_content = News.select().where(News.content.is_null(False)).count()
+    news_with_word_count = News.select().where(News.words_count.is_null(False)).count()
+    news_with_content_summary = (
+        News.select().where(News.content_summary.is_null(False)).count()
+    )
+    news_with_words_count_gte_300 = News.select().where(News.words_count >= 300).count()
+    news_with_sentiment_score = (
+        News.select().where(News.sentiment_score.is_null(False)).count()
+    )
+
+    return {
+        "total_news": total_news,
+        "news_with_content": news_with_content,
+        "news_with_word_count": news_with_word_count,
+        "news_with_words_count_gte_300": news_with_words_count_gte_300,
+        "news_with_content_summary": news_with_content_summary,
+        "news_with_sentiment_score": news_with_sentiment_score,
     }

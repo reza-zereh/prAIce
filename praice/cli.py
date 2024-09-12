@@ -494,6 +494,21 @@ def cli_words_count_stats():
     rprint(table)
 
 
+@news_app.command("stats")
+def cli_news_stats():
+    """Show statistics about news articles."""
+    news_stats = news_helpers.get_news_stats()
+
+    table = Table(title="News Statistics")
+    table.add_column("Statistic", style="cyan")
+    table.add_column("Value", style="magenta")
+
+    for key, value in news_stats.items():
+        table.add_row(key.replace("_", " ").title(), str(value))
+
+    rprint(table)
+
+
 # #################
 # Price commands
 # #################

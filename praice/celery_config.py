@@ -52,4 +52,9 @@ app.conf.beat_schedule = {
         "schedule": crontab(minute="*/10"),
         "kwargs": {"limit": 5},
     },
+    "populate-relevance-score": {
+        "task": "praice.tasks.populate_relevance_score_job",
+        "schedule": crontab(minute="*/8"),
+        "kwargs": {"limit": 10},
+    },
 }

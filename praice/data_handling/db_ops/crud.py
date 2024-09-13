@@ -55,6 +55,7 @@ def add_symbol(
     sector: Optional[str] = None,
     industry: Optional[str] = None,
     exchange: Optional[str] = None,
+    description: Optional[str] = None,
 ) -> Symbol:
     """Add a new symbol to the database."""
     with db.atomic():
@@ -65,6 +66,7 @@ def add_symbol(
             sector=sector,
             industry=industry,
             exchange=exchange,
+            description=description,
         )
 
 
@@ -80,6 +82,7 @@ def update_symbol(
     sector: Optional[str] = None,
     industry: Optional[str] = None,
     exchange: Optional[str] = None,
+    description: Optional[str] = None,
 ) -> Symbol:
     """Update an existing symbol in the database."""
     sym = Symbol.get(Symbol.symbol == symbol.upper())
@@ -93,6 +96,8 @@ def update_symbol(
         sym.industry = industry
     if exchange is not None:
         sym.exchange = exchange
+    if description is not None:
+        sym.description = description
     sym.save()
     return sym
 

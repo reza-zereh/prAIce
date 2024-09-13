@@ -56,6 +56,7 @@ def create_symbol_from_yahoo(symbol: str) -> Symbol:
         sector=info.get("sector"),
         industry=info.get("industry"),
         exchange=info.get("exchange"),
+        description=info.get("longBusinessSummary"),
     )
 
     logger.info(f"Created new symbol: {new_symbol.symbol}")

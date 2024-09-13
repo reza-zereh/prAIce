@@ -13,7 +13,7 @@ from praice.data_handling.collectors.news_collector import (
     collect_news_articles,
     collect_news_headlines,
 )
-from praice.data_handling.db_ops import crud, news_helpers, ta_helpers
+from praice.data_handling.db_ops import crud, news_helpers, symbol_helpers, ta_helpers
 from praice.data_handling.models import db
 from praice.data_handling.processors import news_processor
 from praice.utils import logging
@@ -45,15 +45,28 @@ app.add_typer(fd_app, name="fd", help="Fundamental Data commands")
 
 
 @symbol_app.command("add")
-def cli_add_symbol(
+def cli_add_symbol_from_yahoo(symbol: str = typer.Argument(..., help="Symbol to add")):
+    """Add a new symbol to the database using Yahoo Finance."""
+    try:
+        new_symbol = symbol_helpers.create_symbol_from_yahoo(symbol=symbol)
+        rprint(f"[green]Symbol {new_symbol.symbol} added successfully.[/green]")
+    except IntegrityError:
+        rprint(f"[red]Symbol {symbol} already exists in the database[/red]")
+    except Exception as e:
+        rprint(f"[red]Error adding symbol: {str(e)}[/red]")
+
+
+@symbol_app.command("add-manual")
+def cli_add_symbol_manually(
     symbol: str = typer.Option(..., prompt=True),
     name: str = typer.Option(..., prompt=True),
     asset_class: str = typer.Option(..., prompt=True),
     sector: Optional[str] = typer.Option(None),
     industry: Optional[str] = typer.Option(None),
     exchange: Optional[str] = typer.Option(None),
+    description: Optional[str] = typer.Option(None),
 ):
-    """Add a new symbol to the database."""
+    """Add a new symbol to the database manually."""
 
     # Prompt for optional fields only if not provided
     if sector is None:
@@ -62,15 +75,24 @@ def cli_add_symbol(
         industry = typer.prompt("Industry", default="")
     if exchange is None:
         exchange = typer.prompt("Exchange", default="")
+    if description is None:
+        description = typer.prompt("Description", default="")
 
     # Convert empty strings to None
     sector = sector or None
     industry = industry or None
     exchange = exchange or None
+    description = description or None
 
     try:
         new_symbol = crud.add_symbol(
-            symbol, name, asset_class, sector, industry, exchange
+            symbol=symbol,
+            name=name,
+            asset_class=asset_class,
+            sector=sector,
+            industry=industry,
+            exchange=exchange,
+            description=description,
         )
         rprint(f"[green]Symbol {new_symbol.symbol} added successfully.[/green]")
     except Exception as e:
@@ -110,10 +132,19 @@ def cli_update_symbol(
     sector: Optional[str] = typer.Option(None),
     industry: Optional[str] = typer.Option(None),
     exchange: Optional[str] = typer.Option(None),
+    description: Optional[str] = typer.Option(None),
 ):
     """Update an existing symbol in the database."""
     try:
-        crud.update_symbol(symbol, name, asset_class, sector, industry, exchange)
+        crud.update_symbol(
+            symbol=symbol,
+            name=name,
+            asset_class=asset_class,
+            sector=sector,
+            industry=industry,
+            exchange=exchange,
+            description=description,
+        )
         rprint(f"[green]Symbol {symbol} updated successfully.[/green]")
     except Exception as e:
         rprint(f"[red]Error updating symbol: {str(e)}[/red]")

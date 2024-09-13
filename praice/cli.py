@@ -52,6 +52,7 @@ def cli_add_symbol(
     sector: Optional[str] = typer.Option(None),
     industry: Optional[str] = typer.Option(None),
     exchange: Optional[str] = typer.Option(None),
+    description: Optional[str] = typer.Option(None),
 ):
     """Add a new symbol to the database."""
 
@@ -62,15 +63,24 @@ def cli_add_symbol(
         industry = typer.prompt("Industry", default="")
     if exchange is None:
         exchange = typer.prompt("Exchange", default="")
+    if description is None:
+        description = typer.prompt("Description", default="")
 
     # Convert empty strings to None
     sector = sector or None
     industry = industry or None
     exchange = exchange or None
+    description = description or None
 
     try:
         new_symbol = crud.add_symbol(
-            symbol, name, asset_class, sector, industry, exchange
+            symbol=symbol,
+            name=name,
+            asset_class=asset_class,
+            sector=sector,
+            industry=industry,
+            exchange=exchange,
+            description=description,
         )
         rprint(f"[green]Symbol {new_symbol.symbol} added successfully.[/green]")
     except Exception as e:
@@ -110,10 +120,19 @@ def cli_update_symbol(
     sector: Optional[str] = typer.Option(None),
     industry: Optional[str] = typer.Option(None),
     exchange: Optional[str] = typer.Option(None),
+    description: Optional[str] = typer.Option(None),
 ):
     """Update an existing symbol in the database."""
     try:
-        crud.update_symbol(symbol, name, asset_class, sector, industry, exchange)
+        crud.update_symbol(
+            symbol=symbol,
+            name=name,
+            asset_class=asset_class,
+            sector=sector,
+            industry=industry,
+            exchange=exchange,
+            description=description,
+        )
         rprint(f"[green]Symbol {symbol} updated successfully.[/green]")
     except Exception as e:
         rprint(f"[red]Error updating symbol: {str(e)}[/red]")

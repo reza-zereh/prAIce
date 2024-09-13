@@ -29,3 +29,19 @@ class SentimentRequest(BaseModel):
 
     text: str
     model_name: str = "ProsusAI/finbert"
+
+
+class SimilarityRequest(BaseModel):
+    """
+    Represents a request for sentence similarity calculation.
+
+    Attributes:
+        sentence1 (str): The first sentence for comparison.
+        sentence2 (str): The second sentence for comparison.
+        model_name (str, optional): The name of the model to be used for sentence similarity.
+            Defaults to "sentence-transformers/all-mpnet-base-v2".
+    """
+
+    sentence1: str
+    sentence2: str
+    model_name: str = "sentence-transformers/all-mpnet-base-v2"

@@ -86,6 +86,7 @@ class Symbol(BaseModel):
     is_active = BooleanField(default=True)
     created_at = DateTimeField(default=lambda: datetime.now(UTC))
     updated_at = DateTimeField(default=lambda: datetime.now(UTC))
+    description = TextField(null=True)
 
     class Meta:
         table_name = "symbols"

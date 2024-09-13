@@ -154,3 +154,20 @@ def populate_sentiment_scores_job(limit: int = 5):
         )
     except Exception as e:
         logger.error(f"Error in sentiment scores calculation job: {str(e)}")
+
+
+@shared_task
+def populate_relevance_score_job(limit: int = 5):
+    """
+    Executes the relevance scores calculation job.
+    """
+    logger.info("Starting relevance scores calculation job")
+    try:
+        # Calculate relevance scores for News entries with content_summary but no relevance_score
+        n_calculated_scores, ids = news_processor.populate_relevance_score(limit=limit)
+        logger.info(
+            "Relevance scores calculation job completed successfully for "
+            f"{n_calculated_scores} entries. NewsSymbol IDs: {ids}"
+        )
+    except Exception as e:
+        logger.error(f"Error in relevance scores calculation job: {str(e)}")

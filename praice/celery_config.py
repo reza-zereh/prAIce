@@ -49,8 +49,8 @@ app.conf.beat_schedule = {
     },
     "populate-sentiment-score": {
         "task": "praice.tasks.populate_sentiment_scores_job",
-        "schedule": crontab(minute="*/10"),
-        "kwargs": {"limit": 5},
+        "schedule": crontab(minute="*/7"),
+        "kwargs": {"limit": 10},
     },
     "populate-relevance-score": {
         "task": "praice.tasks.populate_relevance_score_job",

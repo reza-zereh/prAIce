@@ -16,12 +16,12 @@ app.conf.timezone = "UTC"
 app.conf.beat_schedule = {
     "collect-yfinance-headlines": {
         "task": "praice.tasks.collect_headlines_by_source_job",
-        "schedule": crontab(minute="*/80"),  # every 80 minutes
+        "schedule": crontab(minute="*/80"),
         "args": ("yfinance",),
     },
     "collect-articles": {
         "task": "praice.tasks.collect_articles_job",
-        "schedule": crontab(minute="*/170"),  # every 170 minutes
+        "schedule": crontab(minute="*/170"),
     },
     "collect-price-data": {
         "task": "praice.tasks.collect_price_data_job",
@@ -29,7 +29,6 @@ app.conf.beat_schedule = {
     },
     "calculate-store-technical-analysis": {
         "task": "praice.tasks.calculate_and_store_technical_analysis_job",
-        # "schedule": "cron(30 22 * * *)",  # daily at 6:30 PM ET
         "schedule": crontab(minute="30", hour="22"),  # daily at 6:00 PM ET
     },
     "collect-store-fundamental-data": {
@@ -44,12 +43,17 @@ app.conf.beat_schedule = {
     },
     "generate-news-summaries": {
         "task": "praice.tasks.generate_news_summaries_job",
-        "schedule": crontab(minute="*/6"),
+        "schedule": crontab(minute="*/30"),
         "kwargs": {"limit": 5, "model": settings.SUMMARIZATION_MODEL},
     },
     "populate-sentiment-score": {
         "task": "praice.tasks.populate_sentiment_scores_job",
-        "schedule": crontab(minute="*/10"),
-        "kwargs": {"limit": 5},
+        "schedule": crontab(minute="*/45"),
+        "kwargs": {"limit": 10},
+    },
+    "populate-relevance-score": {
+        "task": "praice.tasks.populate_relevance_score_job",
+        "schedule": crontab(minute="*/2"),
+        "kwargs": {"limit": 10},
     },
 }

@@ -76,3 +76,34 @@ def calculate_sentiment_score(text: str, model_name: str = "ProsusAI/finbert"):
     )
     response.raise_for_status()
     return response.json()["sentiment_score"]
+
+
+def calculate_similarity_score(
+    text1: str, text2: str, model_name: str = "sentence-transformers/all-mpnet-base-v2"
+):
+    """
+    Calculates the similarity score between two texts using the specified model using an external API.
+
+    Args:
+        text1 (str): The first text for comparison.
+        text2 (str): The second text for comparison.
+        model_name (str, optional): The name of the model to be used for sentence similarity.
+            Defaults to "sentence-transformers/all-mpnet-base-v2".
+
+    Returns:
+        float: The cosine similarity score between the two texts.
+
+    Raises:
+        HTTPError: If there is an error in the HTTP request to the similarity API.
+    """
+    api_url = settings.SIMILARITY_API_URL
+    response = requests.post(
+        api_url,
+        json={
+            "sentence1": text1,
+            "sentence2": text2,
+            "model_name": model_name,
+        },
+    )
+    response.raise_for_status()
+    return response.json()["similarity_score"]

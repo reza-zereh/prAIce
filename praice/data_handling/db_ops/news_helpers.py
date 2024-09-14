@@ -189,6 +189,13 @@ def get_news_stats() -> Dict[str, int]:
     news_with_sentiment_score = (
         News.select().where(News.sentiment_score.is_null(False)).count()
     )
+    total_news_symbols = NewsSymbol.select().count()
+    news_symbols_with_relevance_score = (
+        NewsSymbol.select().where(NewsSymbol.relevance_score.is_null(False)).count()
+    )
+    eligible_news_symbols_for_relevance_score = (
+        NewsSymbol.select().join(News).where(News.words_count >= 300).count()
+    )
 
     return {
         "total_news": total_news,
@@ -197,4 +204,7 @@ def get_news_stats() -> Dict[str, int]:
         "news_with_words_count_gte_300": news_with_words_count_gte_300,
         "news_with_content_summary": news_with_content_summary,
         "news_with_sentiment_score": news_with_sentiment_score,
+        "total_news_symbols": total_news_symbols,
+        "eligible_news_symbols_for_relevance_score": eligible_news_symbols_for_relevance_score,
+        "news_symbols_with_relevance_score": news_symbols_with_relevance_score,
     }

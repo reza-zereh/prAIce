@@ -2,7 +2,7 @@ from typing import List, Tuple
 
 from loguru import logger
 
-from praice.data_handling.models import News, db
+from praice.data_handling.models import News, NewsSymbol, Symbol, db
 from praice.libs.summarizers import SummarizerFactory
 from praice.utils import helpers
 
@@ -110,3 +110,40 @@ def populate_sentiment_score(limit=5) -> Tuple[int, List[int]]:
         total_updated += 1
 
     return (total_updated, news_ids)
+
+
+def populate_relevance_score(limit=5) -> Tuple[int, List[int]]:
+    """
+    Populates the relevance score for news symbols.
+
+    Args:
+        limit (int): The maximum number of news symbols to process. Defaults to 5.
+
+    Returns:
+        Tuple[int, List[int]]: A tuple containing the total number of news symbols updated and a list of their IDs.
+    """
+
+    total_updated = 0
+    news_symbols_ids = []
+    query = (
+        NewsSymbol.select()
+        .join(News)
+        .join(Symbol, on=(NewsSymbol.symbol == Symbol.id))
+        .where(
+            (NewsSymbol.relevance_score.is_null(True))
+            & (News.content_summary.is_null(False))
+            & (Symbol.description.is_null(False))
+        )
+        .limit(limit)
+    )
+
+    for news_symbol in query:
+        relevance_score = helpers.calculate_similarity_score(
+            text1=news_symbol.symbol.description, text2=news_symbol.news.content_summary
+        )
+        news_symbol.relevance_score = relevance_score
+        news_symbol.save()
+        news_symbols_ids.append(news_symbol.id)
+        total_updated += 1
+
+    return (total_updated, news_symbols_ids)

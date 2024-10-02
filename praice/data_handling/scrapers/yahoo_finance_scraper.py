@@ -28,8 +28,8 @@ class YahooFinanceScraper(NewsScraper):
         soup = self.get_soup(url)
         news_list = []
 
-        for news_item in soup.find_all("li", class_="stream-item yf-7rcxn"):
-            headline_tag = news_item.find("h3", class_="clamp yf-1e4au4k")
+        for news_item in soup.find_all("li", class_="stream-item yf-ovk92u"):
+            headline_tag = news_item.find("h3", class_="clamp yf-1sxfjua")
             if headline_tag:
                 headline = headline_tag.text.strip()
                 link_tag = news_item.find("a", href=True)

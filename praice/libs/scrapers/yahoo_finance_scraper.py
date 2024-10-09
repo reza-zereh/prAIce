@@ -3,7 +3,7 @@ from typing import Dict, List
 
 from loguru import logger
 
-from praice.data_handling.scrapers.base_scraper import NewsScraper
+from praice.libs.scrapers.base_scraper import NewsScraper
 
 
 class YahooFinanceScraper(NewsScraper):

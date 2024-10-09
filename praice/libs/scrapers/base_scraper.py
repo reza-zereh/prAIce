@@ -1,10 +1,10 @@
-from abc import ABC, abstractmethod
 import time
+from abc import ABC, abstractmethod
 from typing import Dict, List, Optional
 
-from loguru import logger
 import requests
 from bs4 import BeautifulSoup
+from loguru import logger
 
 
 class NewsScraper(ABC):
